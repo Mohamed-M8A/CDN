@@ -191,9 +191,13 @@ window.renderBinaryChart = function(buffer) {
         const chartCanvas = document.getElementById("priceChart");
         if (!finalData.length || !chartCanvas) return;
 
+        // --- القضاء على التوسع اللانهائي ---
         const parent = chartCanvas.parentElement;
-        parent.style.cssText = "position: relative; width: 100%; height: auto; min-height: 450px; margin-bottom: 30px; clear: both;";
-        chartCanvas.style.height = "300px"; 
+        // نثبت الارتفاع هنا لضمان عدم تمدد الحاوية للأبد
+        parent.style.position = "relative";
+        parent.style.height = "320px"; 
+        parent.style.width = "100%";
+        parent.style.overflow = "hidden"; // منع أي تسرب بصري
 
         const prices = finalData.map(x => x.price);
         const dates = finalData.map(x => x.date);
@@ -206,13 +210,12 @@ window.renderBinaryChart = function(buffer) {
         const getArrow = (v, c) => v > c ? `<span class="stat-arrow arrow-up">▲</span>` : v < c ? `<span class="stat-arrow arrow-down">▼</span>` : "";
 
         const statsHtml = `
-            <div class="price-stats">
+            <div class="price-stats" style="margin-top: 10px;">
                 <div class="stat-item current">
-                    <div><strong>السعر الحالي</strong></div>
-                    <div>${endPrice} ${currency} ${getArrow(endPrice, prevPrice)} 
-                    <small style="display:block; font-size:11px; color:#666;">(${(endPrice - prevPrice).toFixed(2)})</small></div>
+                    <strong>السعر الحالي</strong>
+                    <span>${endPrice} ${currency} ${getArrow(endPrice, prevPrice)}</span>
                 </div>
-                <div class="stat-item"><strong>المتوسط</strong> <span>${avg} ${currency}</span></div>
+                <div class="stat-item"><strong>المتوسط</strong> <span>${avg}</span></div>
                 <div class="stat-item"><strong>الأقل</strong> <span class="arrow-down">${min}</span></div>
                 <div class="stat-item"><strong>الأعلى</strong> <span class="arrow-up">${max}</span></div>
             </div>
@@ -221,35 +224,6 @@ window.renderBinaryChart = function(buffer) {
         const oldStats = parent.querySelector(".price-stats");
         if (oldStats) oldStats.remove();
         chartCanvas.insertAdjacentHTML("afterend", statsHtml);
-
-        let tooltipEl = document.getElementById("chart-tooltip") || Object.assign(document.createElement("div"), {id: "chart-tooltip"});
-        if (!tooltipEl.parentElement) document.body.appendChild(tooltipEl);
-
-        const externalTooltipHandler = (context) => {
-            const { chart, tooltip } = context;
-            if (tooltip.opacity === 0) { tooltipEl.style.opacity = 0; tooltipEl.style.display = "none"; return; }
-
-            tooltipEl.style.display = "block";
-            tooltipEl.style.opacity = 1;
-
-            const dataIndex = tooltip.dataPoints[0].dataIndex;
-            const value = tooltip.dataPoints[0].raw;
-            const prev = dataIndex > 0 ? prices[dataIndex - 1] : value;
-            const diff = +(value - prev).toFixed(2);
-            const percent = prev !== 0 ? ((diff / prev) * 100).toFixed(1) : 0;
-            const arrow = diff > 0 ? `▲` : diff < 0 ? `▼` : `-`;
-
-            tooltipEl.innerHTML = `
-                <div class="tooltip-line" style="border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:5px;">${dates[dataIndex]}</div>
-                <div class="tooltip-line">السعر: ${value} ${currency}</div>
-                <div class="tooltip-line">التغير: ${arrow} ${diff}</div>
-                <div class="tooltip-line">النسبة: ${percent}%</div>
-            `;
-
-            const pos = chart.canvas.getBoundingClientRect();
-            tooltipEl.style.left = (pos.left + window.pageXOffset + tooltip.caretX + 10) + 'px';
-            tooltipEl.style.top = (pos.top + window.pageYOffset + tooltip.caretY - 60) + 'px';
-        };
 
         const ctx = chartCanvas.getContext("2d");
         if (window.myPriceChart) window.myPriceChart.destroy();
@@ -264,24 +238,23 @@ window.renderBinaryChart = function(buffer) {
                     backgroundColor: "rgba(231,76,60,0.1)",
                     borderWidth: 2,
                     pointRadius: 0,
-                    pointHoverRadius: 5,
                     fill: true,
                     tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: { 
+                maintainAspectRatio: false, // هذا ضروري جداً مع تحديد ارتفاع الأب
+                animation: false, // تعطيل الأنميشن يمنع أحياناً مشاكل إعادة الرسم المتكرر
+                plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: false, external: externalTooltipHandler } 
+                    tooltip: { enabled: true } // تفعيل التول تيب الافتراضي مؤقتاً للتأكد من الثبات
                 },
                 scales: {
-                    x: { ticks: { maxTicksLimit: 5, font: { size: 10 } }, grid: { display: false } },
-                    y: { position: 'right', ticks: { font: { size: 10 } } }
+                    x: { ticks: { maxTicksLimit: 5 }, grid: { display: false } },
+                    y: { position: 'right' }
                 }
             }
         });
-    } catch (err) { console.log(err); }
+    } catch (err) {}
 };
