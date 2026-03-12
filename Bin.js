@@ -119,7 +119,7 @@
                     const p = view.getUint32(16 + (j * 4), true) / 100;
                     if (p > 0) prices.push(p);
                 }
-                window.renderBinaryChart(prices, startDate, lastDate);
+                window.renderBinaryChart(buffer);
             }
         } catch (e) {}
     }
