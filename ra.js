@@ -142,7 +142,7 @@
         });
         
         document.querySelectorAll(".time-value").forEach(el => {
-            el.textContent = `${data.minDelivery}-${data.maxDelivery} أيام`;
+            el.textContent = `${data.maxDelivery}-${data.minDelivery} أيام`;
         });
 
         const availValue = document.querySelector(".avail-value");
