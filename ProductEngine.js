@@ -98,15 +98,15 @@
             savingEl.innerHTML = `<span class="save-label">وفر:</span> <span class="save-amount">${formatPrice(diff)} ${symbol}</span>`;
             const weightedDiff = diff / weight; 
             let color = "#7f8c8d";
-            if (weightedDiff >= 100) color = "#16a085";
+            if (weightedDiff < 100) color = "#16a085";
             else if (weightedDiff < 400) color = "#1abc9c";
-            else if (weightedDiff < 600) color = "#2ecc71";
-            else if (weightedDiff < 900) color = "#f1c40f";
+            else if (weightedDiff < 600) color = "#3498db";
+            else if (weightedDiff < 900) color = "#2ecc71";
             else if (weightedDiff < 1200) color = "#e67e22";
             else if (weightedDiff < 1600) color = "#c0392b";
             else if (weightedDiff < 2000) color = "#f5008b";
             else if (weightedDiff < 3000) color = "#8e44ad";
-            else color = "#f39c12";
+            else color = "#FFD700";
             
             savingEl.style.color = color;
             savingEl.style.fontWeight = "bold";
@@ -267,12 +267,36 @@ window.renderBinaryChart = function(buffer) {
 
 // =================== Chart ===================
 
-        
+window.renderBinaryChart = function(buffer) {
+    try {
+        const view = new DataView(buffer);
+        const startMin = view.getUint32(8, true);
+        const epoch2025 = Date.UTC(2025, 0, 1);
+        const baseDate = new Date(epoch2025 + (startMin * 60 * 1000));
+        const finalData = [];
+        const currency = (typeof getCurrencySymbol === "function") ? getCurrencySymbol() : "";
+
+        for (let i = 0; i < 365; i++) {
+            const priceRaw = view.getUint32(16 + (i * 4), true);
+            if (priceRaw > 0) {
+                const pointDate = new Date(baseDate.getTime());
+                pointDate.setUTCDate(baseDate.getUTCDate() + i);
+                finalData.push({
+                    date: pointDate.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric', year: '2-digit' }),
+                    price: +(priceRaw / 100).toFixed(2)
+                });
+            }
+        }
+
         const chartCanvas = document.getElementById("priceChart");
-        if (!finalData.length || !chartCanvas) return;
+        const tabContainer = document.getElementById("tab4");
+        
+        if (!finalData.length || !chartCanvas || !tabContainer) return;
+
+        tabContainer.style.display = tabContainer.classList.contains('active') ? 'block' : 'none';
 
         const parent = chartCanvas.parentElement;
-        parent.style.cssText = "position: relative; height: 350px; width: 100%;";
+        parent.style.cssText = "position: relative; height: 350px; width: 100%; overflow: hidden;";
         chartCanvas.style.height = "250px";
 
         const prices = finalData.map(x => x.price);
@@ -357,7 +381,6 @@ window.renderBinaryChart = function(buffer) {
                     pointRadius: 4,
                     pointHoverRadius: 6,
                     fill: true,
-                    tension: 0.2
                 }]
             },
             options: {
