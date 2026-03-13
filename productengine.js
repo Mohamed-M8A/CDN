@@ -273,7 +273,7 @@ window.renderBinaryChart = function(buffer) {
         if (!finalData.length || !chartCanvas || !tabContainer) return;
 
         const parent = chartCanvas.parentElement;
-        parent.style.cssText = "position: relative; height: 350px; width: 100%; overflow: hidden;";
+        parent.style.cssText = "position: relative; height: 400px; width: 100%; overflow: hidden;";
         chartCanvas.style.height = "250px";
 
         const prices = finalData.map(x => x.price);
