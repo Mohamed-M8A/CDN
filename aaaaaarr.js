@@ -10,7 +10,7 @@
                     <div class="stars-group" id="stars"></div>
                     <span class="rating-value" id="ratingValue"></span>
                     <span class="divider">|</span>
-                    <a class="rating-count" href="#tab5" onclick="showTab('tab5', document.querySelector('[onclick*=\'tab5\']'))" id="goToReviews"></a>
+                    <a class="rating-count" href="#tab5" onclick="showTab('tab5', document.querySelector('[onclick*=\\\'tab5\\\']'))" id="goToReviews"></a>
                 </div>
                 <hr class="clean-divider">
                 <div class="price-box">
@@ -80,12 +80,10 @@
 
     window.injectData = function(data) {
         UILayout.injectEmptyShelf();
-
         const config = countryInfo[activeCountry] || countryInfo["SA"];
         const weight = config.rate || 1; 
         const symbol = config.symbol;
         const countryName = config.name;
-
         const pOriginal = data.priceOriginal;
         const pDiscounted = data.priceDiscounted;
         const diff = pOriginal - pDiscounted;
@@ -99,7 +97,6 @@
         if (diff > 0 && savingEl) {
             savingEl.innerHTML = `<span class="save-label">وفر:</span> <span class="save-amount">${formatPrice(diff)} ${symbol}</span>`;
             const weightedDiff = diff / weight; 
-            
             let color = "#7f8c8d";
             if (weightedDiff >= 100) color = "#16a085";
             else if (weightedDiff < 400) color = "#1abc9c";
@@ -164,7 +161,86 @@
     };
 })();
 
-// =================== Binary Price History Chart ===================
+window.injectPromo = function(promoData) {
+    let container = document.querySelector('.coupon-container');
+    const shelf = document.getElementById('dynamic-shelf');
+
+    if (!promoData || !promoData.code || !promoData.code.trim()) {
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    if (!container && shelf) {
+        container = document.createElement('div');
+        container.className = 'coupon-container';
+        shelf.parentNode.insertBefore(container, shelf.nextSibling);
+    }
+
+    if (!container) return;
+
+    const colors = ['#ff4757', '#e91e63', '#ff6b81', '#ff5722'];
+    const theme = colors[Math.floor(Math.random() * colors.length)];
+    container.style.setProperty('--theme-color', theme);
+
+    const expiryTimestamp = Date.UTC(2025, 0, 1) + (promoData.expiry * 60 * 1000);
+
+    const updateTimer = () => {
+        const diffMs = expiryTimestamp - Date.now();
+        if (diffMs <= 0) {
+            container.style.display = 'none';
+            clearInterval(window.promoTimer);
+            return;
+        }
+
+        const d = Math.floor(diffMs / 86400000);
+        const h = Math.floor((diffMs % 86400000) / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+        const s = Math.floor((diffMs % 60000) / 1000);
+
+        const timerEl = document.getElementById('promo-timer-text');
+        if (timerEl) {
+            timerEl.textContent = d > 0 ? `⏳ ينتهي خلال ${d} يوم` : `⏳ ينتهي خلال ${h}:${m}:${s}`;
+        }
+    };
+
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+
+    container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 10px;">
+            <div class="coupon-code" id="couponCode">${promoData.code}</div>
+            <button class="copy-button" onclick="copyCoupon('${promoData.code}')">نسخ الكوبون</button>
+        </div>
+        <div class="promo-meta">
+            <span class="qty-badge">🔥 متبقي: ${promoData.quantity} قطعة</span>
+            <span id="promo-timer-text" class="timer-nari" style="color: #0048ff; font-weight: 800; font-size: 14px;">⏳ جاري الحساب...</span>
+        </div>
+    `;
+
+    if (window.promoTimer) clearInterval(window.promoTimer);
+    window.promoTimer = setInterval(updateTimer, 1000);
+    updateTimer();
+};
+
+window.copyCoupon = function(code) {
+    const target = code || document.getElementById('couponCode').textContent;
+    const btn = document.querySelector('.copy-button');
+    const done = () => {
+        if (btn) {
+            const old = btn.textContent;
+            btn.textContent = "تم! ✅";
+            setTimeout(() => btn.textContent = old, 2000);
+        }
+    };
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(target).then(done);
+    } else {
+        const el = document.createElement("textarea");
+        el.value = target; document.body.appendChild(el);
+        el.select(); document.execCommand('copy');
+        document.body.removeChild(el); done();
+    }
+};
 
 window.renderBinaryChart = function(buffer) {
     try {
@@ -172,7 +248,6 @@ window.renderBinaryChart = function(buffer) {
         const startMin = view.getUint32(8, true);
         const epoch2025 = Date.UTC(2025, 0, 1);
         const baseDate = new Date(epoch2025 + (startMin * 60 * 1000));
-        
         const finalData = [];
         const currency = (typeof getCurrencySymbol === "function") ? getCurrencySymbol() : "";
 
@@ -231,10 +306,8 @@ window.renderBinaryChart = function(buffer) {
         const externalTooltipHandler = (context) => {
             const { chart, tooltip } = context;
             if (tooltip.opacity === 0) { tooltipEl.style.opacity = 0; tooltipEl.style.display = "none"; return; }
-
             tooltipEl.style.display = "block";
             tooltipEl.style.opacity = 1;
-
             const dataIndex = tooltip.dataPoints[0].dataIndex;
             const value = tooltip.dataPoints[0].raw;
             const prev = dataIndex > 0 ? prices[dataIndex - 1] : value;
