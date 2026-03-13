@@ -244,27 +244,6 @@ window.copyCoupon = function(code) {
     }
 };
 
-window.renderBinaryChart = function(buffer) {
-    try {
-        const view = new DataView(buffer);
-        const startMin = view.getUint32(8, true);
-        const epoch2025 = Date.UTC(2025, 0, 1);
-        const baseDate = new Date(epoch2025 + (startMin * 60 * 1000));
-        const finalData = [];
-        const currency = (typeof getCurrencySymbol === "function") ? getCurrencySymbol() : "";
-
-        for (let i = 0; i < 365; i++) {
-            const priceRaw = view.getUint32(16 + (i * 4), true);
-            if (priceRaw > 0) {
-                const pointDate = new Date(baseDate.getTime());
-                pointDate.setUTCDate(baseDate.getUTCDate() + i);
-                finalData.push({
-                    date: pointDate.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric', year: '2-digit' }),
-                    price: +(priceRaw / 100).toFixed(2)
-                });
-            }
-        }
-
 // =================== Chart ===================
 
 window.renderBinaryChart = function(buffer) {
@@ -292,8 +271,6 @@ window.renderBinaryChart = function(buffer) {
         const tabContainer = document.getElementById("tab4");
         
         if (!finalData.length || !chartCanvas || !tabContainer) return;
-
-        tabContainer.style.display = tabContainer.classList.contains('active') ? 'block' : 'none';
 
         const parent = chartCanvas.parentElement;
         parent.style.cssText = "position: relative; height: 350px; width: 100%; overflow: hidden;";
@@ -381,6 +358,7 @@ window.renderBinaryChart = function(buffer) {
                     pointRadius: 4,
                     pointHoverRadius: 6,
                     fill: true,
+                    tension: 0.2
                 }]
             },
             options: {
