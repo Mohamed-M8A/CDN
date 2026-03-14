@@ -98,7 +98,8 @@ class Renderer {
         let lastIndex = bytes.length - 1;
         while (lastIndex >= 0 && bytes[lastIndex] === 0) lastIndex--;
         const cleanBytes = bytes.slice(0, lastIndex + 1);
-        return btoa(String.fromCharCode(...cleanBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return btoa(String.fromCharCode(...cleanBytes))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
 
     createCard(product, domain) {
@@ -108,7 +109,10 @@ class Renderer {
         card.className = "post-card title-link";
         const symbol = localStorage.getItem("CurrencySymbol") || "ر.س";
         const data = product.feed;
+        
         const slug = Renderer.toBase64URL(product.imgSlug);
+        const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w320-h320/p.webp`;
+        
         let badgeHTML = '', metaHTML = '';
         if (data) {
             const status = data.status;
@@ -121,7 +125,8 @@ class Renderer {
             metaHTML = `<div class="price-display"><span class="discounted-price">${data.price} ${symbol}</span>${data.original > data.price ? `<span class="original-price">${data.original} ${symbol}</span>` : ''}</div>
                 <div class="product-meta-details"><div class="meta-item">★ ${data.score}</div><div class="meta-item">${data.orders}+ طلب</div><div class="meta-item">${data.shipping === 0 ? 'مجاني' : data.shipping}</div></div>`;
         }
-        card.innerHTML = `<div class="image-container">${badgeHTML}<img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="https://blogger.googleusercontent.com/img/b/R256/${slug}"><div class="external-cart-button"><svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg></div></div><div class="post-content"><h3 class="post-title">${product.title}</h3>${metaHTML}</div>`;
+        
+        card.innerHTML = `<div class="image-container">${badgeHTML}<img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="${imageUrl}"><div class="external-cart-button"><svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg></div></div><div class="post-content"><h3 class="post-title">${product.title}</h3>${metaHTML}</div>`;
         const img = card.querySelector('.post-image');
         if (img) this.observer.observe(img);
         return card;
