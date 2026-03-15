@@ -63,7 +63,7 @@ const WIDGET_CONFIG = {
     ROOT_ID: 'souq-widget-root',
     DOMAIN: "https://souq-alkul.blogspot.com/",
     BASE_URL: "https://pub-13fdf8672306452ea378b09a024d0072.r2.dev/",
-    WORKER_URL: "worker.js",
+    WORKER_URL: "https://cdn.jsdelivr.net/gh/Mohamed-M8A/SK-CDN/worker.js",
     PLACEHOLDER: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_6M_oCTDClXnX0p4KvvHzgjw7X2tBBFzkDp6b057jVwL4KPDL3tscGqe6dKNbLJVbmRDQXlnB3Wbcezf54eTD09j6vLsA7LBsXIEaFX6_Ztqx6e41nWilu1WV4rJjC5AThnbe_vOC-PYH1AMWv0WYgR-QxGp4njSptfwlmmTPBqLMRGzMt0dSElde/s600/%D8%AA%D9%88%D9%81%D9%8A%D8%B1.jpg",
     INITIAL_SIZE: 12,
     BATCH_SIZE: 50
