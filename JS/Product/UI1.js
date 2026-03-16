@@ -1,7 +1,7 @@
 // ==============================
 //  ✅ IMGs
 // ==============================
-  const thumbContainer = document.querySelector('.thumbnail-container');
+const thumbContainer = document.querySelector('.thumbnail-container');
   const thumbSlider = document.querySelector('.thumbnails-slider');
   const mainImg = document.getElementById('mainImage');
   let currentIndex = 0;
@@ -23,11 +23,22 @@
 
   function changeImage(index) {
     const thumbnails = getThumbnails();
-    if (!thumbnails[index]) return;
+    const selectedThumb = thumbnails[index];
+    if (!selectedThumb) return;
     
     currentIndex = index;
-    mainImg.src = thumbnails[index].src;
+    mainImg.src = selectedThumb.src;
     applyImageStyle(mainImg);
+    
+    if (selectedThumb._skuData) {
+      if (typeof window.updateSKUPrice === "function") {
+        window.updateSKUPrice(selectedThumb._skuData);
+      }
+    } else {
+      if (typeof window.resetToInitialData === "function") {
+        window.resetToInitialData();
+      }
+    }
     
     thumbnails.forEach((img, i) =>
       img.classList.toggle('active-thumb', i === index)
@@ -58,12 +69,16 @@
 
   document.getElementById('mainImageRightArrow')?.addEventListener('click', () => {
     const thumbnails = getThumbnails();
-    changeImage((currentIndex - 1 + thumbnails.length) % thumbnails.length);
+    if (thumbnails.length > 0) {
+      changeImage((currentIndex - 1 + thumbnails.length) % thumbnails.length);
+    }
   });
 
   document.getElementById('mainImageLeftArrow')?.addEventListener('click', () => {
     const thumbnails = getThumbnails();
-    changeImage((currentIndex + 1) % thumbnails.length);
+    if (thumbnails.length > 0) {
+      changeImage((currentIndex + 1) % thumbnails.length);
+    }
   });
 
   thumbSlider?.addEventListener('click', (e) => {
