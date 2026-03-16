@@ -250,24 +250,16 @@ window.renderBinaryChart = function(buffer) {
     try {
         const view = new DataView(buffer);
         const priceCount = view.getUint32(16, true);
-        const lastUpdateMin = view.getUint32(12, true);
+        const finalData = [];
         const currency = (typeof getCurrencySymbol === "function") ? getCurrencySymbol() : "";
 
-        if (priceCount === 0) return;
-
-        const finalData = [];
         const limit = Math.min(priceCount, 365);
-        
-        const referenceDate = new Date(Date.UTC(2025, 0, 1)); 
 
         for (let i = 0; i < limit; i++) {
-            const priceRaw = view.getInt32(20 + (i * 4), true);
+            const priceRaw = view.getUint32(20 + (i * 4), true);
             if (priceRaw > 0) {
-                const pDate = new Date(referenceDate.getTime() + (lastUpdateMin * 60 * 1000));
-                pDate.setUTCDate(pDate.getUTCDate() - (limit - 1 - i));
-
                 finalData.push({
-                    date: pDate.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric' }),
+                    date: (i + 1).toString(),
                     price: +(priceRaw / 100).toFixed(2)
                 });
             }
@@ -315,7 +307,7 @@ window.renderBinaryChart = function(buffer) {
             const diff = +(val - pVal).toFixed(2);
             const perc = pVal !== 0 ? ((diff / pVal) * 100).toFixed(1) : 0;
             const arr = diff > 0 ? `<span class="stat-arrow arrow-up">▲</span>` : diff < 0 ? `<span class="stat-arrow arrow-down">▼</span>` : `<span class="stat-arrow">-</span>`;
-            tooltipEl.innerHTML = `<div class="tooltip-line" style="font-weight:bold;">${dates[idx]}</div><div class="tooltip-line">السعر: ${val} ${currency}</div><div class="tooltip-line">التغير: ${arr} ${diff} ${currency}</div><div class="tooltip-line">النسبة: ${perc}%</div>`;
+            tooltipEl.innerHTML = `<div class="tooltip-line" style="font-weight:bold;">نقطة: ${dates[idx]}</div><div class="tooltip-line">السعر: ${val} ${currency}</div><div class="tooltip-line">التغير: ${arr} ${diff} ${currency}</div><div class="tooltip-line">النسبة: ${perc}%</div>`;
             const pos = chart.canvas.getBoundingClientRect();
             const pX = pos.left + window.pageXOffset + tooltip.caretX;
             tooltipEl.style.left = (pX > window.innerWidth * 0.7) ? (pX - 180) + 'px' : (pX + 10) + 'px';
@@ -324,6 +316,7 @@ window.renderBinaryChart = function(buffer) {
 
         const ctx = chartCanvas.getContext("2d");
         if (window.myPriceChart) window.myPriceChart.destroy();
+
         chartCanvas.parentElement.style.height = "300px"; 
 
         window.myPriceChart = new Chart(ctx, {
@@ -344,6 +337,8 @@ window.renderBinaryChart = function(buffer) {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
+                elements: { line: { stepped: false } },
+                interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTooltipHandler } },
                 scales: {
                     x: { ticks: { maxTicksLimit: 7 }, grid: { display: false } },
