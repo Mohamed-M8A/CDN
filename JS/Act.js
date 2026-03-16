@@ -249,7 +249,9 @@ window.copyCoupon = function(code) {
 window.renderBinaryChart = function(buffer) {
     try {
         const view = new DataView(buffer);
+        const startMin = view.getUint32(8, true);
         const priceCount = view.getUint32(16, true);
+        const baseDate = new Date(Date.UTC(2025, 0, 1) + (startMin * 60 * 1000));
         const finalData = [];
         const currency = (typeof getCurrencySymbol === "function") ? getCurrencySymbol() : "";
 
@@ -258,8 +260,10 @@ window.renderBinaryChart = function(buffer) {
         for (let i = 0; i < limit; i++) {
             const priceRaw = view.getUint32(20 + (i * 4), true);
             if (priceRaw > 0) {
+                const pDate = new Date(baseDate.getTime());
+                pDate.setUTCDate(baseDate.getUTCDate() + i);
                 finalData.push({
-                    date: (i + 1).toString(),
+                    date: pDate.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric', year: '2-digit' }),
                     price: +(priceRaw / 100).toFixed(2)
                 });
             }
@@ -307,7 +311,7 @@ window.renderBinaryChart = function(buffer) {
             const diff = +(val - pVal).toFixed(2);
             const perc = pVal !== 0 ? ((diff / pVal) * 100).toFixed(1) : 0;
             const arr = diff > 0 ? `<span class="stat-arrow arrow-up">▲</span>` : diff < 0 ? `<span class="stat-arrow arrow-down">▼</span>` : `<span class="stat-arrow">-</span>`;
-            tooltipEl.innerHTML = `<div class="tooltip-line" style="font-weight:bold;">نقطة: ${dates[idx]}</div><div class="tooltip-line">السعر: ${val} ${currency}</div><div class="tooltip-line">التغير: ${arr} ${diff} ${currency}</div><div class="tooltip-line">النسبة: ${perc}%</div>`;
+            tooltipEl.innerHTML = `<div class="tooltip-line" style="font-weight:bold;">${dates[idx]}</div><div class="tooltip-line">السعر: ${val} ${currency}</div><div class="tooltip-line">التغير: ${arr} ${diff} ${currency}</div><div class="tooltip-line">النسبة: ${perc}%</div>`;
             const pos = chart.canvas.getBoundingClientRect();
             const pX = pos.left + window.pageXOffset + tooltip.caretX;
             tooltipEl.style.left = (pX > window.innerWidth * 0.7) ? (pX - 180) + 'px' : (pX + 10) + 'px';
