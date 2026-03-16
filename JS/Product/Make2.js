@@ -275,25 +275,28 @@ window.copyCoupon = function(code) {
 window.renderBinaryChart = function(buffer) {
     try {
         const view = new DataView(buffer);
-        const startMin = view.getUint32(8, true);
         const priceCount = view.getUint32(16, true);
-        const baseDate = new Date(Date.UTC(2025, 0, 1) + (startMin * 60 * 1000));
         const finalData = [];
         const currency = (typeof getCurrencySymbol === "function") ? getCurrencySymbol() : "";
 
         const limit = Math.min(priceCount, 365);
 
         for (let i = 0; i < limit; i++) {
-            const priceRaw = view.getUint32(20 + (i * 4), true);
-            if (priceRaw > 0) {
-                const pDate = new Date(baseDate.getTime());
-                pDate.setUTCDate(baseDate.getUTCDate() + i);
+            const offset = 20 + (i * 8);
+            const timeInMinutes = view.getUint32(offset, true);
+            const priceRaw = view.getUint32(offset + 4, true);
+
+            if (timeInMinutes > 0) {
+                const pDate = new Date(Date.UTC(2025, 0, 1) + (timeInMinutes * 60 * 1000));
                 finalData.push({
                     date: pDate.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric', year: 'numeric' }),
-                    price: +(priceRaw / 100).toFixed(2)
+                    price: +(priceRaw / 100).toFixed(2),
+                    rawTime: timeInMinutes
                 });
             }
         }
+
+        finalData.sort((a, b) => a.rawTime - b.rawTime);
 
         const tab4 = document.getElementById("tab4");
         const chartCanvas = document.getElementById("priceChart");
@@ -367,7 +370,6 @@ window.renderBinaryChart = function(buffer) {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
-                elements: { line: { stepped: false } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTooltipHandler } },
                 scales: {
