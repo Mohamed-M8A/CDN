@@ -59,7 +59,8 @@
                     
                     if (initialFullData.hasSKU) fetchRange(`${BASE_URL}${country}_sku.bin`, recordIndex * 2888, 2888, "SKU");
                     if (initialFullData.hasPromo) fetchRange(`${BASE_URL}${country}_promo.bin`, recordIndex * 32, 32, "PROMO");
-                    fetchRange(`${BASE_URL}${country}_fluctuation.bin`, recordIndex * 1480, 1480, "CHART");
+                    
+                    fetchRange(`${BASE_URL}${country}_fluctuation.bin`, recordIndex * 2932, 2932, "CHART");
                     
                     break;
                 }
@@ -79,6 +80,8 @@
                 const skuList = [];
                 for (let s = 0; s < 30; s++) {
                     const offset = 8 + (s * 96);
+                    if (offset + 4 > buffer.byteLength) break;
+                    
                     const pDisc = view.getUint32(offset + 4, true) / 100;
                     if (pDisc === 0) continue;
 
@@ -89,7 +92,7 @@
                         shippingFee: view.getUint32(offset + 8, true) / 100,
                         minDelivery: view.getUint8(offset + 12),
                         maxDelivery: view.getUint8(offset + 13),
-                        image: IMG_BASE_URL + imgSlug + ".jpg",
+                        image: IMG_BASE_URL + imgSlug + (imgSlug.includes('.') ? "" : ".jpg"),
                         props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 48, 48)).replace(/\0/g, '').trim())
                     });
                 }
