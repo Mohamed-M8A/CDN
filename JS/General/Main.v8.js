@@ -120,7 +120,7 @@ createCard(product, domain, feed, meta) {
         metaHTML = `<div class="price-display"><span class="discounted-price">${feed.price} ${symbol}</span>${feed.original > feed.price ? `<span class="original-price">${feed.original} ${symbol}</span>` : ''}</div>
             <div class="product-meta-details">
                 <div class="meta-item">★ ${feed.score}</div>
-                <div class="meta-item">${feed.orders}+ طلب</div>
+                <div class="meta-item">${feed.orders}تم بيع</div>
                 <div class="meta-item">${feed.delivery.max}-${feed.delivery.min} يوم</div>
             </div>`;
     }
