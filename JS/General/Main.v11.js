@@ -1,13 +1,23 @@
 const workerCode = `
 class BinaryParser {
-    static parseCore(buffer) {
+    static murmur(str, seed) {
+        let h = seed ^ str.length;
+        for (let i = 0; i < str.length; i++) {
+            h = Math.imul(h ^ str.charCodeAt(i), 0x5bd1e995);
+            h = h ^ (h >>> 13);
+        }
+        return h >>> 0;
+    }
+    static parseCore(buffer, allowedIds = null) {
         const decoder = new TextDecoder();
         const records = [];
         const uint8 = new Uint8Array(buffer);
+        const view = new DataView(buffer);
         for (let i = 0; i < uint8.byteLength; i += 442) {
-            const view = new DataView(uint8.buffer, uint8.byteOffset + i, 442);
+            const id = view.getBigUint64(i, true);
+            if (allowedIds && !allowedIds.has(id)) continue;
             records.push({
-                id: view.getBigUint64(0, true),
+                id: id,
                 date: view.getUint32(8, true),
                 path: decoder.decode(uint8.subarray(i + 12, i + 92)).replace(/\\0/g, '').trim(),
                 title: decoder.decode(uint8.subarray(i + 92, i + 292)).replace(/\\0/g, '').trim(),
@@ -23,51 +33,61 @@ class BinaryParser {
             const id = view.getBigUint64(i, true);
             const status = view.getUint8(i + 31);
             map.set(id, {
-                storeId: view.getUint32(i + 8, true),
                 original: view.getUint32(i + 12, true) / 100,
                 price: view.getUint32(i + 16, true) / 100,
-                shipping: view.getUint32(i + 20, true) / 100,
                 orders: view.getUint16(i + 24, true),
-                reviews: view.getUint16(i + 26, true),
                 score: view.getUint8(i + 28) / 10,
                 delivery: { min: view.getUint8(i + 29), max: view.getUint8(i + 30) },
                 status: {
                     promo: (status >> 7) & 1,
-                    sku: (status >> 6) & 1,
-                    inStock: (status >> 5) & 1,
-                    sud: status & 0x1F
+                    inStock: (status >> 5) & 1
                 }
             });
         }
         return map;
     }
-    static parseMeta(buffer) {
-        const map = new Map();
-        const uint8 = new Uint8Array(buffer);
-        for (let i = 0; i < uint8.byteLength; i += 264) {
-            const view = new DataView(uint8.buffer, uint8.byteOffset + i, 264);
-            map.set(view.getBigUint64(0, true), uint8.slice(i + 8, i + 264));
-        }
-        return map;
-    }
 }
 self.onmessage = async (e) => {
-    const { baseUrl, country } = e.data;
-    const v = Date.now();
+    const { baseUrl, country, query } = e.data;
+    const CACHE_NAME = 'souq-cache-v1';
+    async function getFile(url, hours) {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(url);
+        if (cached) {
+            const date = cached.headers.get('date');
+            if (date && (Date.now() - new Date(date).getTime()) < hours * 3600000) return cached.arrayBuffer();
+        }
+        const res = await fetch(url + '?v=' + new Date().getHours());
+        if (res.ok) { cache.put(url, res.clone()); return res.arrayBuffer(); }
+        return null;
+    }
     try {
-        const [coreRes, feedRes, metaRes] = await Promise.all([
-            fetch(baseUrl + 'core.bin?v=' + v),
-            fetch(baseUrl + country.toUpperCase() + '_feed.bin?v=' + v),
-            fetch(baseUrl + 'meta.bin?v=' + v)
+        const [coreBuf, feedBuf, metaBuf] = await Promise.all([
+            getFile(baseUrl + 'core.bin', 24),
+            getFile(baseUrl + country.toUpperCase() + '_feed.bin', 1),
+            query ? getFile(baseUrl + 'meta.bin', 24) : Promise.resolve(null)
         ]);
-        const coreBuf = await coreRes.arrayBuffer();
-        const feedBuf = await feedRes.arrayBuffer();
-        const metaBuf = await metaRes.arrayBuffer();
+        let allowedIds = null;
+        if (query && metaBuf) {
+            allowedIds = new Set();
+            const metaData = new Uint8Array(metaBuf);
+            const metaView = new DataView(metaBuf);
+            let hA = BinaryParser.murmur(query.toLowerCase(), 42);
+            let hB = BinaryParser.murmur(query.toLowerCase(), 99);
+            let bits = [];
+            for (let i = 0; i < 7; i++) bits.push((hA + i * hB) % 2048);
+            for (let i = 0; i < metaData.length; i += 264) {
+                let match = true;
+                for (let b of bits) {
+                    if (!(metaData[i + 8 + Math.floor(b / 8)] & (1 << (b % 8)))) { match = false; break; }
+                }
+                if (match) allowedIds.add(metaView.getBigUint64(i, true));
+            }
+        }
         self.postMessage({ 
             type: 'DONE', 
-            core: BinaryParser.parseCore(coreBuf), 
-            feed: BinaryParser.parseFeed(feedBuf), 
-            meta: BinaryParser.parseMeta(metaBuf) 
+            core: BinaryParser.parseCore(coreBuf, allowedIds), 
+            feed: BinaryParser.parseFeed(feedBuf)
         });
     } catch (err) {
         self.postMessage({ type: 'ERROR', error: err.message });
