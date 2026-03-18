@@ -99,32 +99,38 @@ class Renderer {
             .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
 
-    createCard(product, domain, feed, meta) {
-        if (!product) return null;
-        const card = document.createElement("a");
-        card.href = domain + product.path;
-        card.className = "post-card title-link";
-        const symbol = localStorage.getItem("CurrencySymbol") || "ر.س";
-        const slug = Renderer.toBase64URL(product.imgSlug);
-        const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w220-h220/p.webp`;
-        
-        let badgeHTML = '', metaHTML = '';
-        if (feed) {
-            if (feed.status.inStock === 0) badgeHTML = '<div class="discount-badge" style="background:#888">نفذت</div>';
-            else if (feed.status.promo === 1) badgeHTML = '<div class="discount-badge" style="background:#ff3b30">عرض خاص</div>';
-            else if (feed.original > feed.price) {
-                const discount = Math.round(((feed.original - feed.price) / feed.original) * 100);
-                badgeHTML = `<div class="discount-badge">-${discount}%-</div>`;
-            }
-            metaHTML = `<div class="price-display"><span class="discounted-price">${feed.price} ${symbol}</span>${feed.original > feed.price ? `<span class="original-price">${feed.original} ${symbol}</span>` : ''}</div>
-                <div class="product-meta-details"><div class="meta-item">★ ${feed.score}</div><div class="meta-item">${feed.orders}+ طلب</div><div class="meta-item">${feed.shipping === 0 ? 'مجاني' : feed.shipping}</div></div>`;
+createCard(product, domain, feed, meta) {
+    if (!product) return null;
+    const card = document.createElement("a");
+    card.href = domain + product.path;
+    card.className = "post-card title-link";
+    const symbol = localStorage.getItem("CurrencySymbol") || "ر.س";
+    const slug = Renderer.toBase64URL(product.imgSlug);
+    const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w220-h220/p.webp`;
+    
+    let badgeHTML = '', metaHTML = '';
+    if (feed) {
+        if (feed.status.inStock === 0) badgeHTML = '<div class="discount-badge" style="background:#888">نفذت</div>';
+        else if (feed.status.promo === 1) badgeHTML = '<div class="discount-badge" style="background:#ff3b30">عرض خاص</div>';
+        else if (feed.original > feed.price) {
+            const discount = Math.round(((feed.original - feed.price) / feed.original) * 100);
+            badgeHTML = `<div class="discount-badge">-${discount}%</div>`;
         }
         
-        card.innerHTML = `<div class="image-container">${badgeHTML}<img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="${imageUrl}"><div class="external-cart-button"><svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg></div></div><div class="post-content"><h3 class="post-title">${product.title}</h3>${metaHTML}</div>`;
-        const img = card.querySelector('.post-image');
-        if (img) this.observer.observe(img);
-        return card;
+        metaHTML = `<div class="price-display"><span class="discounted-price">${feed.price} ${symbol}</span>${feed.original > feed.price ? `<span class="original-price">${feed.original} ${symbol}</span>` : ''}</div>
+            <div class="product-meta-details">
+                <div class="meta-item">★ ${feed.score}</div>
+                <div class="meta-item">${feed.orders}+ طلب</div>
+                <div class="meta-item">${feed.delivery.min}-${feed.delivery.max} يوم</div>
+            </div>`;
     }
+    
+    card.innerHTML = `<span class="UID" style="display:none">${product.id}</span><div class="image-container">${badgeHTML}<img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="${imageUrl}"><div class="external-cart-button"><svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg></div></div><div class="post-content"><h3 class="post-title">${product.title}</h3>${metaHTML}</div>`;
+    
+    const img = card.querySelector('.post-image');
+    if (img) this.observer.observe(img);
+    return card;
+}
 
     renderBatch(products, domain, feedMap, metaMap) {
         const fragment = document.createDocumentFragment();
