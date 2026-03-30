@@ -319,9 +319,9 @@ window.renderBinaryChart = function(buffer) {
         const avg = +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2);
         const current = prices[prices.length - 1], prev = prices[prices.length - 2] || current;
 
-        const getArrow = (now, before) => {
-            if (now > before) return `<span class="stat-arrow arrow-up">▲</span>`;
-            if (now < before) return `<span class="stat-arrow arrow-down">▼</span>`;
+        const getArrow = (curr, old) => {
+            if (curr > old) return `<span class="stat-arrow arrow-up">▲</span>`;
+            if (curr < old) return `<span class="stat-arrow arrow-down">▼</span>`;
             return "";
         };
 
@@ -332,47 +332,36 @@ window.renderBinaryChart = function(buffer) {
             chartCanvas.parentNode.insertBefore(statsContainer, chartCanvas.nextSibling);
         }
 
+        const diff = +(current - prev).toFixed(2);
+        const diffText = diff > 0 ? `+${diff}` : diff;
+
         statsContainer.innerHTML = `
             <div class="stat-item current">
                 <strong>السعر الحالي</strong>
                 <span>${current} ${currency} ${getArrow(current, prev)}</span>
+                <small style="font-size:11px;color:#666;margin-top:2px;display:block;">(${diffText} ${currency})</small>
             </div>
-            <div class="stat-item"><strong>المتوسط</strong><span>${avg} ${currency}</span></div>
-            <div class="stat-item"><strong>أقل سعر</strong><span>${min} ${currency}</span></div>
-            <div class="stat-item"><strong>أعلى سعر</strong><span>${max} ${currency}</span></div>
-        `;
+            <div class="stat-container-inner" style="display:flex; flex-wrap:wrap; gap:10px; width:100%;">
+                <div class="stat-item"><strong>المتوسط</strong><span>${avg} ${currency}</span></div>
+                <div class="stat-item"><strong>أقل سعر</strong><span>${min} ${currency}</span></div>
+                <div class="stat-item"><strong>أعلى سعر</strong><span>${max} ${currency}</span></div>
+            </div>`;
 
         let tooltipEl = document.getElementById("chart-tooltip") || Object.assign(document.createElement("div"), {id: "chart-tooltip"});
         if (!tooltipEl.parentElement) document.body.appendChild(tooltipEl);
 
         const externalTooltipHandler = (context) => {
             const { chart, tooltip } = context;
-            if (tooltip.opacity === 0) { 
-                tooltipEl.style.opacity = 0; 
-                tooltipEl.style.display = "none"; 
-                return; 
-            }
+            if (tooltip.opacity === 0) { tooltipEl.style.opacity = 0; tooltipEl.style.display = "none"; return; }
             tooltipEl.style.display = "block";
             tooltipEl.style.opacity = 1;
-            
             const idx = tooltip.dataPoints[0].dataIndex;
             const val = tooltip.dataPoints[0].raw;
             const pVal = idx > 0 ? prices[idx - 1] : val;
-            const diff = +(val - pVal).toFixed(2);
-            const perc = pVal !== 0 ? ((diff / pVal) * 100).toFixed(1) : 0;
-            
-            let arrowHtml = "";
-            if (diff > 0) arrowHtml = `<span class="stat-arrow arrow-up">▲</span>`;
-            else if (diff < 0) arrowHtml = `<span class="stat-arrow arrow-down">▼</span>`;
-            else arrowHtml = `<span class="stat-arrow">-</span>`;
-
-            tooltipEl.innerHTML = `
-                <div class="tooltip-line" style="font-weight:bold;">${dates[idx]}</div>
-                <div class="tooltip-line">السعر: ${val} ${currency}</div>
-                <div class="tooltip-line">التغير: ${arrowHtml} ${diff} ${currency}</div>
-                <div class="tooltip-line">النسبة: ${perc}%</div>
-            `;
-            
+            const d = +(val - pVal).toFixed(2);
+            const perc = pVal !== 0 ? ((d / pVal) * 100).toFixed(1) : 0;
+            const arr = getArrow(val, pVal) || `<span class="stat-arrow">-</span>`;
+            tooltipEl.innerHTML = `<div class="tooltip-line" style="font-weight:bold;">${dates[idx]}</div><div class="tooltip-line">السعر: ${val} ${currency}</div><div class="tooltip-line">التغير: ${arr} ${d} ${currency}</div><div class="tooltip-line">النسبة: ${perc}%</div>`;
             const pos = chart.canvas.getBoundingClientRect();
             const pX = pos.left + window.pageXOffset + tooltip.caretX;
             tooltipEl.style.left = (pX > window.innerWidth * 0.7) ? (pX - 180) + 'px' : (pX + 10) + 'px';
@@ -381,7 +370,6 @@ window.renderBinaryChart = function(buffer) {
 
         const ctx = chartCanvas.getContext("2d");
         if (window.myPriceChart) window.myPriceChart.destroy();
-        
         chartCanvas.parentElement.style.height = "300px";
 
         window.myPriceChart = new Chart(ctx, {
@@ -403,10 +391,7 @@ window.renderBinaryChart = function(buffer) {
                 maintainAspectRatio: false,
                 animation: false,
                 interaction: { mode: 'index', intersect: false },
-                plugins: { 
-                    legend: { display: false }, 
-                    tooltip: { enabled: false, external: externalTooltipHandler } 
-                },
+                plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTooltipHandler } },
                 scales: {
                     x: { ticks: { maxTicksLimit: 7 }, grid: { display: false } },
                     y: { position: 'right', grid: { color: '#f0f0f0' }, beginAtZero: false }
