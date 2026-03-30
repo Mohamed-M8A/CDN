@@ -1,7 +1,18 @@
+const COUNTRY_MAP = {
+    "SA": { symbol: "ر.س" },
+    "AE": { symbol: "د.إ" },
+    "OM": { symbol: "ر.ع" },
+    "MA": { symbol: "د.م" },
+    "DZ": { symbol: "د.ج" },
+    "TN": { symbol: "د.ت" }
+};
+
 class Renderer {
     constructor(containerId, placeholder) {
         this.container = document.getElementById(containerId);
         this.placeholder = placeholder;
+        const activeCntry = localStorage.getItem("Cntry") || "SA";
+        this.currencyConfig = COUNTRY_MAP[activeCntry] || COUNTRY_MAP["SA"];
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -12,6 +23,10 @@ class Renderer {
                 }
             });
         }, { rootMargin: "150px" });
+    }
+
+    formatPriceDisplay(val) {
+        return parseFloat(val).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
     static toBase64URL(bytes) {
@@ -27,16 +42,22 @@ class Renderer {
         const card = document.createElement("a");
         card.href = domain + product.path;
         card.className = "post-card title-link";
-        const symbol = localStorage.getItem("CurrencySymbol") || "ر.س";
+        const symbol = this.currencyConfig.symbol;
         const slug = Renderer.toBase64URL(product.imgSlug);
         const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w220-h220/p.webp`;
         
         let badgeHTML = '', metaHTML = '';
         if (feed) {
+            const price = this.formatPriceDisplay(feed.price);
+            const original = this.formatPriceDisplay(feed.original);
+            const deliveryTime = (feed.delivery.min === feed.delivery.max || !feed.delivery.max) 
+                ? `${feed.delivery.min} يوم` 
+                : `${feed.delivery.max}-${feed.delivery.min} يوم`;
+
             if (feed.status.inStock === 0) {
-                badgeHTML = '<div class="discount-badge" style="background:#888">نفذت</div>';
+                badgeHTML = '<div class="discount-badge out-of-stock">نفذت</div>';
             } else if (feed.status.promo === 1) {
-                badgeHTML = '<div class="discount-badge" style="background:#ff3b30">عرض خاص</div>';
+                badgeHTML = '<div class="discount-badge promo">عرض خاص</div>';
             } else if (feed.original > feed.price) {
                 const discount = Math.round(((feed.original - feed.price) / feed.original) * 100);
                 badgeHTML = `<div class="discount-badge">-${discount}%</div>`;
@@ -44,13 +65,13 @@ class Renderer {
             
             metaHTML = `
                 <div class="price-display">
-                    <span class="discounted-price">${feed.price} ${symbol}</span>
-                    ${feed.original > feed.price ? `<span class="original-price">${feed.original} ${symbol}</span>` : ''}
+                    <span class="discounted-price">${price} ${symbol}</span>
+                    ${feed.original > feed.price ? `<span class="original-price">${original} ${symbol}</span>` : ''}
                 </div>
                 <div class="product-meta-details">
                     <div class="meta-item">★ ${feed.score}</div>
-                    <div class="meta-item">${feed.orders} تم بيع</div>
-                    <div class="meta-item">${feed.delivery.max}-${feed.delivery.min} يوم</div>
+                    <div class="meta-item">${feed.orders.toLocaleString()} تم بيع</div>
+                    <div class="meta-item">${deliveryTime}</div>
                 </div>`;
         }
         
@@ -114,7 +135,7 @@ async function startWidget() {
 
     const renderNextBatch = () => {
         if (storeData.core.length === 0) {
-            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:50px;">لا توجد نتائج تطابق بحثك</div>';
+            grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
             return;
         }
         const size = currentIndex === 0 ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
@@ -131,9 +152,8 @@ async function startWidget() {
             loader.style.display = 'none';
             renderNextBatch();
         } else if (e.data.type === 'ERROR') {
-            console.error(e.data.error);
             loader.style.display = 'none';
-            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;">حدث خطأ أثناء تحميل البيانات</div>';
+            grid.innerHTML = '<div class="error-msg">حدث خطأ أثناء تحميل البيانات</div>';
         }
     };
 
