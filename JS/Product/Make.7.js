@@ -393,8 +393,6 @@ window.renderBinaryChart = function(buffer) {
 
 // =================== Download Chart ===================
 
-
-<script>
 (function() {
     window.downloadChartAsImage = function() {
         const chartInstance = window.myPriceChart;
@@ -477,4 +475,3 @@ window.renderBinaryChart = function(buffer) {
 
     observer.observe(document.body, { childList: true, subtree: true });
 })();
-</script>
