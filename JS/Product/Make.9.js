@@ -411,9 +411,19 @@ window.renderBinaryChart = function(buffer) {
         ctx.fillStyle = isDarkMode ? "#121212" : "#ffffff";
         ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-        const productName = document.querySelector("h1")?.innerText || "تقرير تحليل الأسعار";
-        const storedCountry = localStorage.getItem("Cntry") || "";
+        const productName = document.querySelector("h1")?.innerText || "تقرير الأسعار";
         
+        const countryCode = localStorage.getItem("Cntry") || "SA";
+        const countryData = {
+            "SA": "السعودية",
+            "AE": "الإمارات",
+            "OM": "عُمان",
+            "MA": "المغرب",
+            "DZ": "الجزائر",
+            "TN": "تونس"
+        };
+        const countryName = countryData[countryCode] || "السعودية";
+
         ctx.direction = "rtl";
         ctx.textAlign = "right";
         
@@ -426,25 +436,21 @@ window.renderBinaryChart = function(buffer) {
         const cleanName = productName.length > 55 ? productName.substring(0, 55) + "..." : productName;
         ctx.fillText(cleanName, tempCanvas.width - padding, 80);
 
-        if (storedCountry) {
-            ctx.fillStyle = "#3498db";
-            ctx.font = "bold 16px Arial";
-            ctx.fillText("المنطقة: " + storedCountry, tempCanvas.width - padding, 105);
-        }
+        ctx.fillStyle = "#3498db";
+        ctx.font = "bold 16px Arial";
+        ctx.fillText("سوق: " + countryName, tempCanvas.width - padding, 105);
 
         ctx.fillStyle = "#7f8c8d";
         ctx.font = "12px Arial";
         const dateStr = new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'});
-        ctx.fillText(window.location.hostname + " | مؤشر السوق المحدث بتاريخ " + dateStr, tempCanvas.width - padding, 128);
+        ctx.fillText(window.location.hostname + " | تحديث " + dateStr, tempCanvas.width - padding, 128);
 
         ctx.shadowColor = "rgba(0,0,0,0.15)";
         ctx.shadowBlur = 25;
-        ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 12;
         ctx.drawImage(canvas, padding, headerHeight);
         
         ctx.shadowBlur = 0;
-        ctx.shadowOffsetY = 0;
         ctx.strokeStyle = isDarkMode ? "#333" : "#f0f0f0";
         ctx.lineWidth = 2;
         ctx.strokeRect(5, 5, tempCanvas.width - 10, tempCanvas.height - 10);
@@ -452,7 +458,7 @@ window.renderBinaryChart = function(buffer) {
         const imageBase64 = tempCanvas.toDataURL("image/png", 1.0);
         const downloadLink = document.createElement("a");
         downloadLink.href = imageBase64;
-        downloadLink.download = `Price-Report-${storedCountry || 'Global'}-${new Date().getTime()}.png`;
+        downloadLink.download = `Price-Report-${countryCode}-${new Date().getTime()}.png`;
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
@@ -464,14 +470,14 @@ window.renderBinaryChart = function(buffer) {
             const btnHtml = `
                 <div style="text-align: center; margin: 25px 0;">
                     <button id="btn-download-chart" onclick="downloadChartAsImage()" 
-                        style="padding: 12px 26px; background: #2c3e50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        style="padding: 12px 26px; background: #2c3e50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
                         حفظ التقرير كصورة
                     </button>
                 </div>`;
             stats.insertAdjacentHTML("afterend", btnHtml);
             const btn = document.getElementById("btn-download-chart");
-            btn.onmouseover = () => { btn.style.background = "#e74c3c"; btn.style.transform = "scale(1.02)"; };
-            btn.onmouseout = () => { btn.style.background = "#2c3e50"; btn.style.transform = "scale(1)"; };
+            btn.onmouseover = () => { btn.style.background = "#e74c3c"; };
+            btn.onmouseout = () => { btn.style.background = "#2c3e50"; };
         }
     });
 
