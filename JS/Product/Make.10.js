@@ -415,13 +415,13 @@ window.renderBinaryChart = function(buffer) {
         
         const countryCode = localStorage.getItem("Cntry") || "SA";
         const countryData = {
-            "SA": "السعودية",
-            "AE": "الإمارات",
-            "OM": "عُمان",
-            "MA": "المغرب",
-            "DZ": "الجزائر",
-            "TN": "تونس"
-        };
+               "SA": "السعودية 🇸🇦",
+               "AE": "الإمارات 🇦🇪",
+               "OM": "عُمان 🇴🇲",
+               "MA": "المغرب 🇲🇦",
+               "DZ": "الجزائر 🇩🇿",
+               "TN": "تونس 🇹🇳"
+               };
         const countryName = countryData[countryCode] || "السعودية";
 
         ctx.direction = "rtl";
@@ -438,7 +438,7 @@ window.renderBinaryChart = function(buffer) {
 
         ctx.fillStyle = "#3498db";
         ctx.font = "bold 16px Arial";
-        ctx.fillText("سوق: " + countryName, tempCanvas.width - padding, 105);
+        ctx.fillText("الدولة: " + countryName, tempCanvas.width - padding, 105);
 
         ctx.fillStyle = "#7f8c8d";
         ctx.font = "12px Arial";
@@ -471,7 +471,7 @@ window.renderBinaryChart = function(buffer) {
                 <div style="text-align: center; margin: 25px 0;">
                     <button id="btn-download-chart" onclick="downloadChartAsImage()" 
                         style="padding: 12px 26px; background: #2c3e50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                        حفظ التقرير كصورة
+                        حفظ الرسم البياني 
                     </button>
                 </div>`;
             stats.insertAdjacentHTML("afterend", btnHtml);
