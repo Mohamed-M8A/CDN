@@ -412,23 +412,25 @@ window.renderBinaryChart = function(buffer) {
         ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
         const productName = document.querySelector("h1")?.innerText || "تقرير تحليل الأسعار";
-        const userCountry = (typeof Cntry !== 'undefined') ? Cntry : "العالمية";
+        const storedCountry = localStorage.getItem("Cntry") || "";
         
         ctx.direction = "rtl";
         ctx.textAlign = "right";
         
         ctx.fillStyle = "#e74c3c";
         ctx.font = "bold 26px Arial";
-        ctx.fillText("بـورصـة الأسـعـار 📈", tempCanvas.width - padding, 45);
+        ctx.fillText("بـورصـة الأسـعـار", tempCanvas.width - padding, 45);
 
         ctx.fillStyle = isDarkMode ? "#eeeeee" : "#2c3e50";
         ctx.font = "bold 19px Arial";
         const cleanName = productName.length > 55 ? productName.substring(0, 55) + "..." : productName;
         ctx.fillText(cleanName, tempCanvas.width - padding, 80);
 
-        ctx.fillStyle = "#3498db";
-        ctx.font = "bold 15px Arial";
-        ctx.fillText("📍 سوق: " + userCountry, tempCanvas.width - padding, 105);
+        if (storedCountry) {
+            ctx.fillStyle = "#3498db";
+            ctx.font = "bold 16px Arial";
+            ctx.fillText("المنطقة: " + storedCountry, tempCanvas.width - padding, 105);
+        }
 
         ctx.fillStyle = "#7f8c8d";
         ctx.font = "12px Arial";
@@ -450,7 +452,7 @@ window.renderBinaryChart = function(buffer) {
         const imageBase64 = tempCanvas.toDataURL("image/png", 1.0);
         const downloadLink = document.createElement("a");
         downloadLink.href = imageBase64;
-        downloadLink.download = `Price-Analysis-${userCountry}-${new Date().getTime()}.png`;
+        downloadLink.download = `Price-Report-${storedCountry || 'Global'}-${new Date().getTime()}.png`;
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
@@ -463,12 +465,12 @@ window.renderBinaryChart = function(buffer) {
                 <div style="text-align: center; margin: 25px 0;">
                     <button id="btn-download-chart" onclick="downloadChartAsImage()" 
                         style="padding: 12px 26px; background: #2c3e50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                        <span>📸</span> استخراج تقرير السعر
+                        حفظ التقرير كصورة
                     </button>
                 </div>`;
             stats.insertAdjacentHTML("afterend", btnHtml);
             const btn = document.getElementById("btn-download-chart");
-            btn.onmouseover = () => { btn.style.background = "#e74c3c"; btn.style.transform = "scale(1.05)"; };
+            btn.onmouseover = () => { btn.style.background = "#e74c3c"; btn.style.transform = "scale(1.02)"; };
             btn.onmouseout = () => { btn.style.background = "#2c3e50"; btn.style.transform = "scale(1)"; };
         }
     });
