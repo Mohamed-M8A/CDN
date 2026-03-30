@@ -390,3 +390,83 @@ window.renderBinaryChart = function(buffer) {
         });
     } catch (e) {}
 };
+
+// =================== Download Chart ===================
+
+
+(function() {
+    window.downloadChartAsImage = function() {
+        const chartInstance = window.myPriceChart;
+        if (!chartInstance) return;
+
+        const canvas = document.getElementById("priceChart");
+        const tempCanvas = document.createElement("canvas");
+        const ctx = tempCanvas.getContext("2d");
+        
+        const padding = 40;
+        const headerHeight = 120;
+        tempCanvas.width = canvas.width + (padding * 2);
+        tempCanvas.height = canvas.height + headerHeight + padding;
+
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        ctx.fillStyle = isDarkMode ? "#121212" : "#ffffff";
+        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        const productName = document.querySelector("h1")?.innerText || "تقرير تحليل الأسعار";
+        ctx.direction = "rtl";
+        ctx.textAlign = "right";
+        
+        ctx.fillStyle = "#e74c3c";
+        ctx.font = "bold 24px Arial";
+        ctx.fillText("سعر منتج/", tempCanvas.width - padding, 45);
+
+        ctx.fillStyle = isDarkMode ? "#eeeeee" : "#2c3e50";
+        ctx.font = "bold 18px Arial";
+        const cleanName = productName.length > 60 ? productName.substring(0, 60) + "..." : productName;
+        ctx.fillText(cleanName, tempCanvas.width - padding, 80);
+
+        ctx.fillStyle = "#7f8c8d";
+        ctx.font = "13px Arial";
+        const dateStr = new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'});
+        ctx.fillText(window.location.hostname + " | تقرير مؤشر السوق المحدث بتاريخ " + dateStr, tempCanvas.width - padding, 105);
+
+        ctx.shadowColor = "rgba(0,0,0,0.1)";
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 10;
+        ctx.drawImage(canvas, padding, headerHeight);
+        
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = isDarkMode ? "#333" : "#f0f0f0";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(5, 5, tempCanvas.width - 10, tempCanvas.height - 10);
+
+        const imageBase64 = tempCanvas.toDataURL("image/png", 1.0);
+        const downloadLink = document.createElement("a");
+        downloadLink.href = imageBase64;
+        downloadLink.download = `Price-Report-${new Date().getTime()}.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    };
+
+    const observer = new MutationObserver(() => {
+        const stats = document.querySelector(".price-stats");
+        if (stats && !document.getElementById("btn-download-chart")) {
+            const btnHtml = `
+                <div style="text-align: center; margin: 25px 0;">
+                    <button id="btn-download-chart" onclick="downloadChartAsImage()" 
+                        style="padding: 12px 24px; background: #2c3e50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+                        <span>📊</span> حفظ الرسم البياني
+                    </button>
+                </div>`;
+            stats.insertAdjacentHTML("afterend", btnHtml);
+            const btn = document.getElementById("btn-download-chart");
+            btn.onmouseover = () => { btn.style.background = "#e74c3c"; btn.style.transform = "scale(1.05)"; };
+            btn.onmouseout = () => { btn.style.background = "#2c3e50"; btn.style.transform = "scale(1)"; };
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
