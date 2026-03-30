@@ -321,21 +321,24 @@ window.renderBinaryChart = function(buffer) {
 
         const getArrow = (v, c) => v > c ? `<span class="stat-arrow arrow-up">▲</span>` : v < c ? `<span class="stat-arrow arrow-down">▼</span>` : "";
 
-        const statsHtml = `
-            <div class="price-stats">
-                <div class="stat-item current">
-                    <strong>السعر الحالي</strong>
-                    <span>${current} ${currency} ${getArrow(current, prev)}</span>
-                    <small style="font-size:11px;color:#666;margin-top:2px;">(${(current - prev).toFixed(2)} ${currency})</small>
-                </div>
+        let statsContainer = tab4.querySelector(".price-stats");
+        if (!statsContainer) {
+            statsContainer = document.createElement("div");
+            statsContainer.className = "price-stats";
+            chartCanvas.parentNode.insertBefore(statsContainer, chartCanvas.nextSibling);
+        }
+
+        statsContainer.innerHTML = `
+            <div class="stat-item current">
+                <strong>السعر الحالي</strong>
+                <span>${current} ${currency} ${getArrow(current, prev)}</span>
+                <small style="font-size:11px;color:#666;margin-top:2px;display:block;">(${(current - prev).toFixed(2)} ${currency})</small>
+            </div>
+            <div class="stat-container-inner" style="display:flex; flex-wrap:wrap; gap:10px; width:100%;">
                 <div class="stat-item"><strong>المتوسط</strong><span>${avg} ${currency}</span></div>
                 <div class="stat-item"><strong>أقل سعر</strong><span>${min} ${currency}</span></div>
                 <div class="stat-item"><strong>أعلى سعر</strong><span>${max} ${currency}</span></div>
             </div>`;
-
-        const oldStats = tab4.querySelector(".price-stats");
-        if (oldStats) oldStats.remove();
-        chartCanvas.insertAdjacentHTML("afterend", statsHtml);
 
         let tooltipEl = document.getElementById("chart-tooltip") || Object.assign(document.createElement("div"), {id: "chart-tooltip"});
         if (!tooltipEl.parentElement) document.body.appendChild(tooltipEl);
@@ -388,5 +391,5 @@ window.renderBinaryChart = function(buffer) {
                 }
             }
         });
-    } catch (e) {}
+    } catch (e) { console.error("Chart Error:", e); }
 };
