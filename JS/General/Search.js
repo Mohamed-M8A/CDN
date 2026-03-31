@@ -51,7 +51,7 @@ if (form) form.onsubmit = (e) => { e.preventDefault(); startSearch(); };
 if (input) input.onfocus = updateDropdown;
 document.onclick = (e) => { if (historyDropdown && !e.target.closest('.search-container')) historyDropdown.style.display = 'none'; };
 
-// =================== ✅ نصوص البحث المتغيرة (Placeholders) ===================
+// =================== ✅ Search Placeholders ===================
 if (input) {
     const placeholders = [
         "ماكينة قهوة ديلونجي","سماعات بلوتوث جالكسي بودز","مكنسة روبوت ذكية","شاحن مغناطيسي للآيفون","ستاند لابتوب قابل للطي",
@@ -68,7 +68,7 @@ if (input) {
         "طابعة صور ملونة","لابتوب أسوس","جوال شاومي ريدمي","تابلت سامسونج جالكسي","حقيبة ظهر للطلاب",
         "قرص صلب خارجي","كابل شحن تايب سي","ماوس جيمينج","مكواة شعر سيراميك","عصا سيلفي بلوتوث",
         "آلة حاسبة علمية","سماعة رأس سلكية","دفاية زيت كهربائية","طقم مفكات متعدد","مقص أظافر ستانلس",
-        "ابحث في سوق الكل"
+        "ابحث في ISeekPrice"
     ];
     function rotatePlaceholder() {
         input.setAttribute("placeholder", placeholders[Math.floor(Math.random() * placeholders.length)]);
