@@ -1,14 +1,10 @@
 (function() {
-    /* --- SECTION: DOMAIN PROTECTION --- */
-    const _0xky = "s}oo歿|mmo8lvmy}zy8myw"; 
+    /* --- SECURITY LAYER --- */
+    const _d = "s}oo歿|mmo8lvmy}zy8myw"; // Encrypted Domain
     if (typeof window.userVerifySync === "function") {
-        if (!window.location.hostname.includes(window.userVerifySync(_0xky))) {
-            return; 
-        }
-    } else {
-        return;
-    }
-    /* ---------------------------------- */
+        if (!window.location.hostname.includes(window.userVerifySync(_d))) return;
+    } else { return; }
+    /* ---------------------- */
 
     const BASE_URL = "https://pub-13fdf8672306452ea378b09a024d0072.r2.dev/";
     const IMG_BASE_URL = "https://ae-pic-a1.aliexpress-media.com/kf/";
