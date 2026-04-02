@@ -1,16 +1,19 @@
 (function() {
-    /* --- SECURITY LAYER --- */
+    /* --- INTERNAL SECURITY LAYER --- */
     const _d = "s}oo歿|mmo8lvmy}zy8myw"; 
     
+    function _v(s) {
+        return s.split('').map(function(c) { 
+            return String.fromCharCode(c.charCodeAt(0) - 10); 
+        }).join('');
+    }
+
     function checkAuth() {
         try {
-            if (typeof window.userVerifySync === "function") {
-                const decoded = window.userVerifySync(_d);
-                const cleanDomain = decoded.replace("https://", "").replace("/", "");
-                return window.location.hostname.includes(cleanDomain);
-            }
-        } catch (e) {}
-        return false;
+            const decoded = _v(_d);
+            const cleanDomain = decoded.replace("https://", "").replace("/", "");
+            return window.location.hostname.includes(cleanDomain);
+        } catch (e) { return false; }
     }
     /* ------------------------------------------- */
 
@@ -31,7 +34,10 @@
     };
 
     async function startEngine() {
-        if (!checkAuth()) return;
+        if (!checkAuth()) {
+            console.error("Access Denied");
+            return;
+        }
 
         try {
             const domUIDStr = document.querySelector(".UID")?.textContent.trim();
@@ -80,7 +86,7 @@
                     break;
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.error("Engine failure"); }
     }
 
     async function fetchRange(url, start, length, type) {
@@ -122,11 +128,11 @@
         } catch (e) {}
     }
 
-    /* --- إدارة التحميل لضمان الرندرة --- */
-    if (document.readyState === "complete") {
-        startEngine();
+    // بدء المحرك فوراً
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", startEngine);
     } else {
-        window.addEventListener("load", startEngine);
+        startEngine();
     }
 
     window.updateSKUPrice = function(item) {
