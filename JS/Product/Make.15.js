@@ -341,7 +341,9 @@ window.renderBinaryChart = function(buffer) {
                     font-size: 13px;
                     white-space: nowrap;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    transition: opacity 0.15s ease;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    opacity: 0;
+                    display: none;
                 }
             `;
             document.head.appendChild(style);
@@ -383,10 +385,10 @@ window.renderBinaryChart = function(buffer) {
 
         const externalTooltipHandler = (context) => {
             const { chart, tooltip } = context;
-            if (tooltip.opacity === 0) { tooltipEl.style.opacity = 0; tooltipEl.style.display = "none"; return; }
+            if (tooltip.opacity === 0) { tooltipEl.style.opacity = 0; setTimeout(() => { if(tooltipEl.style.opacity == 0) tooltipEl.style.display = "none"; }, 200); return; }
             
             tooltipEl.style.display = "block"; 
-            tooltipEl.style.opacity = 1;
+            setTimeout(() => { tooltipEl.style.opacity = 1; }, 10);
             
             const idx = tooltip.dataPoints[0].dataIndex;
             const val = tooltip.dataPoints[0].raw;
@@ -435,7 +437,8 @@ window.renderBinaryChart = function(buffer) {
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
+                responsive: true, maintainAspectRatio: false, 
+                animation: { duration: 400, easing: 'easeOutQuart' },
                 interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTooltipHandler } },
                 scales: {
