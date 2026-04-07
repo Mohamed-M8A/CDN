@@ -6,6 +6,8 @@ if(selected&&dropdown&&options){selected.addEventListener("click",()=>{dropdown.
 function showToast(msg){if(!toast)return;toast.textContent=msg;toast.classList.add("show");setTimeout(()=>{toast.classList.remove("show")},1000)}
 const canonical=document.createElement("link");canonical.rel="canonical";canonical.href=window.location.origin+window.location.pathname;document.head.appendChild(canonical);if(paramCountry){const robots=document.createElement("meta");robots.name="robots";robots.content="noindex";document.head.appendChild(robots)}
 
+if(window.location.search.includes('m=1')){const url=new URL(window.location.href);url.searchParams.delete('m');window.history.replaceState({},'',url.pathname+url.search)}
+
 const UIDManager={generate(){const now=new Date();const datePart=now.getFullYear().toString()+(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0')+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0')+now.getSeconds().toString().padStart(2,'0');const randomPart=Math.random().toString(36).substring(2,10).toUpperCase();return `ID-${datePart}-${randomPart}`},getPersistentId(){let id=localStorage.getItem("user_fingerprint");if(!id){id=this.generate();localStorage.setItem("user_fingerprint",id)}
 return id}}
 
@@ -17,16 +19,11 @@ function showCartToast(m,t="success"){const h=document.createElement("div");docu
 function addToCart(id){if(!id){showCartToast("عذراً، لم يتم العثور على معرف المنتج!","error");return}let c=JSON.parse(localStorage.getItem("cart"))||[];if(c.some(i=>i.id===id)){showCartToast("المنتج موجود بالفعل في العربة!","error");return}c.push({id:id,timestamp:new Date().getTime()});localStorage.setItem("cart",JSON.stringify(c));window.dispatchEvent(new Event("cartUpdated"));showCartToast("تمت إضافة المنتج بنجاح!","success")}
 document.addEventListener("click",function(e){const b=e.target.closest(".external-cart-button");if(b){e.preventDefault();e.stopPropagation();const p=e.target.closest(".post-card");const id=p?p.querySelector(".UID")?.textContent.trim():null;addToCart(id)}const a=e.target.closest(".add-to-cart");if(a){e.preventDefault();e.stopPropagation();const u=document.querySelector(".UID");addToCart(u?u.textContent.trim():null)}});
 
-// =================== Share + SEO  ===================
+// =================== Share + DM + Back To Top  ===================
 document.addEventListener('DOMContentLoaded',function(){var modal=document.querySelector('.share-modal');var openBtn=document.querySelector('.share-open-btn');var closeBtn=document.querySelector('.modal-close-btn');if(modal&&openBtn&&closeBtn){openBtn.onclick=function(){modal.style.display='block';document.body.style.overflow='hidden'}
 closeBtn.onclick=function(){modal.style.display='none';document.body.style.overflow='auto'}
 window.onclick=function(event){if(event.target==modal){modal.style.display='none';document.body.style.overflow='auto'}}}})
 
-function rmurl(e,t){var r=new RegExp(/\?m=0|&m=0|\?m=1|&m=1/g);if(r.test(e)){e=e.replace(r,"");if(t)window.history.replaceState({},document.title,e)}
-return e}
-const currentUrl=rmurl(location.toString(),!0)
-
-// =================== DM + Back To Top  ===================
 var htmlEl=document.documentElement,darkBtn=document.getElementById("dark-toggler"),iconUse=darkBtn ? darkBtn.querySelector("use") :null;function switchIcon(theme){if(!iconUse) return;if(theme==="dark"){iconUse.setAttribute("xlink:href","#i-sun");iconUse.setAttribute("href","#i-sun")}else{iconUse.setAttribute("xlink:href","#i-moon");iconUse.setAttribute("href","#i-moon")}}function applyTheme(theme,persist){if(theme==="dark"){htmlEl.classList.add("dark-mode");htmlEl.setAttribute("data-theme","dark")}else{htmlEl.classList.remove("dark-mode");htmlEl.setAttribute("data-theme","light")}switchIcon(theme);if(persist){try{localStorage.setItem("theme",theme)}catch(e){}}}var savedTheme;try{savedTheme=localStorage.getItem("theme")}catch(e){savedTheme=null}if(!savedTheme){savedTheme=window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark":"light"}applyTheme(savedTheme,false);if(darkBtn){darkBtn.addEventListener("click",function(e){e.preventDefault();var isDark=htmlEl.classList.contains("dark-mode");applyTheme(isDark ? "light":"dark",true)})}
 
 var backTop = document.getElementById("back-to-top");
