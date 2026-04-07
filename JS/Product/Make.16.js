@@ -314,11 +314,11 @@ window.renderBinaryChart = function(buffer) {
         if (!chartCanvas.parentNode.id.includes("scroll-wrapper")) {
             const scrollContainer = document.createElement("div");
             scrollContainer.id = "chart-scroll-wrapper";
-            scrollContainer.style.cssText = "width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;";
+            scrollContainer.style.cssText = "width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; padding: 20px 0; box-sizing: border-box;";
             
             const innerWrapper = document.createElement("div");
             innerWrapper.id = "chart-inner-resizer";
-            innerWrapper.style.height = "300px";
+            innerWrapper.style.height = "320px";
             innerWrapper.style.position = "relative";
             
             chartCanvas.parentNode.insertBefore(scrollContainer, chartCanvas);
@@ -353,7 +353,7 @@ window.renderBinaryChart = function(buffer) {
         const scrollContainer = document.getElementById("chart-scroll-wrapper");
         
         const isMobile = window.innerWidth < 768;
-        resizer.style.width = isMobile ? Math.max(scrollContainer.offsetWidth, finalData.length * 15) + "px" : "100%";
+        resizer.style.width = "100%";
 
         const prices = finalData.map(x => x.price);
         const dates = finalData.map(x => x.date);
@@ -438,12 +438,13 @@ window.renderBinaryChart = function(buffer) {
             },
             options: {
                 responsive: true, maintainAspectRatio: false, 
+                layout: { padding: { top: 10, bottom: 10 } },
                 animation: { duration: 400, easing: 'easeOutQuart' },
                 interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTooltipHandler } },
                 scales: {
                     x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: isMobile ? 5 : 10 }, grid: { display: false } },
-                    y: { position: 'right', grid: { color: '#f0f0f0', drawBorder: false } }
+                    y: { position: 'right', grace: '15%', ticks: { precision: 2 }, grid: { color: '#f0f0f0', drawBorder: false } }
                 }
             }
         });
