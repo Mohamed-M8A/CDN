@@ -1,5 +1,5 @@
 // =================== ✅ Search ===================
-const searchPageURL = "https://iseekprice.blogspot.com/p/search.html";
+const searchPageURL = "https://iseekprice.com/p/search.html";
 const input = document.getElementById("searchInput");
 const form = document.querySelector(".search-box-form");
 const historyDropdown = document.getElementById("searchHistoryDropdown");
