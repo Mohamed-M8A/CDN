@@ -53,8 +53,8 @@
                         inStock: initialStock,
                         hasSKU: (flags & 0x40) !== 0,
                         hasPromo: (flags & 0x80) !== 0,
-                        productAffLink: "#",
-                        storeAffLink: "#",
+                        productAffCode: "",
+                        storeAffCode: "",
                         storeName: ""
                     };
 
@@ -66,7 +66,6 @@
 
                     if (initialFullData.hasSKU) fetchRange(`${BASE_URL}${country}_sku.bin`, recordIndex * 2888, 2888, "SKU");
                     if (initialFullData.hasPromo) fetchRange(`${BASE_URL}${country}_promo.bin`, recordIndex * 32, 32, "PROMO");
-                    
                     fetchRange(`${BASE_URL}${country}_fluctuation.bin`, recordIndex * 2932, 2932, "CHART");
                     
                     break;
@@ -89,8 +88,8 @@
                 const sName = decoder.decode(new Uint8Array(buffer, 40, 60)).replace(/\0/g, '').trim();
 
                 if (initialFullData) {
-                    initialFullData.productAffLink = `https://s.click.aliexpress.com/e/${pCode}`;
-                    initialFullData.storeAffLink = sCode ? `https://s.click.aliexpress.com/e/${sCode}` : `https://s.click.aliexpress.com/e/${pCode}`;
+                    initialFullData.productAffCode = pCode;
+                    initialFullData.storeAffCode = sCode;
                     initialFullData.storeName = sName;
 
                     if (typeof window.injectData === "function") {
@@ -102,10 +101,8 @@
                 for (let s = 0; s < 30; s++) {
                     const offset = 8 + (s * 96);
                     if (offset + 4 > buffer.byteLength) break;
-                    
                     const pDisc = view.getUint32(offset + 4, true) / 100;
                     if (pDisc === 0) continue;
-
                     const imgSlug = decoder.decode(new Uint8Array(buffer, offset + 14, 34)).replace(/\0/g, '').trim();
                     skuList.push({
                         skuIdx: s, 
