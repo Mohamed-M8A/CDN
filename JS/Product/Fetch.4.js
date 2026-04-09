@@ -52,13 +52,18 @@
                         maxDelivery: view.getUint8(i + 30),
                         inStock: initialStock,
                         hasSKU: (flags & 0x40) !== 0,
-                        hasPromo: (flags & 0x80) !== 0
+                        hasPromo: (flags & 0x80) !== 0,
+                        productAffLink: "#",
+                        storeAffLink: "#",
+                        storeName: ""
                     };
 
                     if (typeof window.injectData === "function") {
                         window.injectData(initialFullData);
                     }
                     
+                    fetchRange(`${BASE_URL}${country}_links.bin`, recordIndex * 100, 100, "LINKS");
+
                     if (initialFullData.hasSKU) fetchRange(`${BASE_URL}${country}_sku.bin`, recordIndex * 2888, 2888, "SKU");
                     if (initialFullData.hasPromo) fetchRange(`${BASE_URL}${country}_promo.bin`, recordIndex * 32, 32, "PROMO");
                     
@@ -76,9 +81,23 @@
             if (res.status !== 206) return;
             const buffer = await res.arrayBuffer();
             const view = new DataView(buffer);
-            const decoder = new TextDecoder();
+            const decoder = new TextDecoder("utf-8");
 
-            if (type === "SKU") {
+            if (type === "LINKS") {
+                const pCode = decoder.decode(new Uint8Array(buffer, 12, 14)).replace(/\0/g, '').trim();
+                const sCode = decoder.decode(new Uint8Array(buffer, 26, 14)).replace(/\0/g, '').trim();
+                const sName = decoder.decode(new Uint8Array(buffer, 40, 60)).replace(/\0/g, '').trim();
+
+                if (initialFullData) {
+                    initialFullData.productAffLink = `https://s.click.aliexpress.com/e/${pCode}`;
+                    initialFullData.storeAffLink = sCode ? `https://s.click.aliexpress.com/e/${sCode}` : `https://s.click.aliexpress.com/e/${pCode}`;
+                    initialFullData.storeName = sName;
+
+                    if (typeof window.injectData === "function") {
+                        window.injectData(initialFullData);
+                    }
+                }
+            } else if (type === "SKU") {
                 const skuList = [];
                 for (let s = 0; s < 30; s++) {
                     const offset = 8 + (s * 96);
@@ -99,9 +118,7 @@
                         props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 48, 48)).replace(/\0/g, '').trim())
                     });
                 }
-                if (typeof window.renderSKUs === "function") {
-                    window.renderSKUs(skuList);
-                }
+                if (typeof window.renderSKUs === "function") window.renderSKUs(skuList);
             } else if (type === "PROMO" && window.injectPromo) {
                 window.injectPromo({
                     expiry: view.getUint32(8, true),
@@ -116,18 +133,14 @@
 
     window.updateSKUPrice = function(item) {
         window.selectedSkuIndex = item.skuIdx;
-
-        if (typeof window.injectData === "function") {
+        if (initialFullData && typeof window.injectData === "function") {
             window.injectData({
+                ...initialFullData,
                 priceOriginal: item.priceOriginal,
                 priceDiscounted: item.priceDiscounted,
                 shippingFee: item.shippingFee,
                 minDelivery: item.minDelivery,
-                maxDelivery: item.maxDelivery,
-                inStock: initialStock,
-                orders: initialOrders,
-                score: initialScore,
-                reviews: initialReviews
+                maxDelivery: item.maxDelivery
             });
         }
         const variantEl = document.querySelector(".variant-value");
@@ -136,7 +149,6 @@
 
     window.resetToInitialData = function() {
         window.selectedSkuIndex = 255; 
-
         if (initialFullData && typeof window.injectData === "function") {
             window.injectData(initialFullData);
             const variantEl = document.querySelector(".variant-value");
