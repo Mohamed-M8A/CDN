@@ -2,7 +2,7 @@
 
 (function() {
     const UILayout = {
-        injectEmptyShelf() {
+    injectEmptyShelf() {
             const root = document.getElementById('dynamic-shelf');
             if (!root || root.innerHTML.trim() !== "") return;
             root.innerHTML = `
@@ -31,10 +31,17 @@
                     <div class="info-box shipping-time"><span class="label">مدة التوصيل</span><span class="value time-value">_</span></div>
                     <div class="info-box shipping-fee"><span class="label">رسوم التوصيل</span><span class="value fee-value">_</span></div>
                 </div>
+
+                <div class="button-container">
+                    <a href="#" class="buy-button" id="mainPurchaseBtn" target="_blank" rel="nofollow">-</a>
+                    <button class="add-to-cart" id="visitStoreBtn">-</button>
+                    <div id="telegram-alert-wrapper">-</div>
+                </div>
+
                 <hr class="clean-divider">
             `;
         },
-
+        
         drawStars(container, rating) {
             if (!container) return;
             const fullStars = Math.floor(rating);
