@@ -95,6 +95,11 @@
                     initialFullData.storeAffCode = sCode;
                     initialFullData.storeName = sName;
 
+                    localStorage.setItem(`store_${initialFullData.storeId}`, JSON.stringify({
+                        name: sName,
+                        aff: sCode
+                    }));
+
                     if (typeof window.injectData === "function") {
                         window.injectData(initialFullData);
                     }
