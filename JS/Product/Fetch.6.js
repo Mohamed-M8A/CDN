@@ -36,12 +36,15 @@
                     
                     window.currentRecordIndex = recordIndex;
 
+                    const extractedStoreID = view.getUint32(i + 8, true);
+
                     initialOrders = view.getUint16(i + 24, true);
                     initialReviews = view.getUint16(i + 26, true);
                     initialScore = view.getUint8(i + 28) / 10;
                     initialStock = (flags & 0x20) !== 0;
 
                     initialFullData = {
+                        storeId: extractedStoreID,
                         priceOriginal: view.getUint32(i + 12, true) / 100,
                         priceDiscounted: view.getUint32(i + 16, true) / 100,
                         shippingFee: view.getUint32(i + 20, true) / 100,
