@@ -28,12 +28,19 @@ class BinaryParser {
         return records;
     }
 
-    static parseFeed(buffer) {
+    static parseFeed(buffer, targetStoreId = null) {
         const map = new Map();
+        const storeMatchedIds = new Set();
         const view = new DataView(buffer);
         for (let i = 0; i < buffer.byteLength; i += 32) {
             const id = view.getBigUint64(i, true);
+            const storeId = view.getUint32(i + 8, true);
             const status = view.getUint8(i + 31);
+
+            if (targetStoreId !== null && storeId !== targetStoreId) continue;
+            
+            if (targetStoreId !== null) storeMatchedIds.add(id);
+
             map.set(id, {
                 original: view.getUint32(i + 12, true) / 100,
                 price: view.getUint32(i + 16, true) / 100,
@@ -46,7 +53,7 @@ class BinaryParser {
                 }
             });
         }
-        return map;
+        return { feedMap: map, matchedIds: storeMatchedIds };
     }
 
     static parseMeta(buffer) {
@@ -62,7 +69,7 @@ class BinaryParser {
 }
 
 self.onmessage = async (e) => {
-    const { baseUrl, country, query } = e.data;
+    const { baseUrl, country, query, storeId } = e.data;
     const CACHE_NAME = 'souq-cache-v1';
 
     async function getFile(url, hours) {
@@ -85,7 +92,12 @@ self.onmessage = async (e) => {
         ]);
 
         let allowedIds = null;
-        if (query && metaBuf) {
+        const targetStore = storeId ? parseInt(storeId) : null;
+        const feedResult = BinaryParser.parseFeed(feedBuf, targetStore);
+        
+        if (targetStore !== null) {
+            allowedIds = feedResult.matchedIds;
+        } else if (query && metaBuf) {
             allowedIds = new Set();
             const metaData = new Uint8Array(metaBuf);
             const metaView = new DataView(metaBuf);
@@ -105,8 +117,7 @@ self.onmessage = async (e) => {
         self.postMessage({ 
             type: 'DONE', 
             core: BinaryParser.parseCore(coreBuf, allowedIds), 
-            feed: BinaryParser.parseFeed(feedBuf),
-            meta: BinaryParser.parseMeta(metaBuf)
+            feed: feedResult.feedMap
         });
     } catch (err) {
         self.postMessage({ type: 'ERROR', error: err.message });
