@@ -159,12 +159,14 @@ async function startWidget() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('query');
+    const storeId = urlParams.get('store');
 
     loadMoreBtn.onclick = renderNextBatch;
     worker.postMessage({
         baseUrl: WIDGET_CONFIG.BASE_URL,
         country: localStorage.getItem("Cntry") || "SA",
-        query: query
+        query: query,
+        storeId: storeId
     });
 }
 
