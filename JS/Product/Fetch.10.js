@@ -86,9 +86,9 @@
             const decoder = new TextDecoder("utf-8");
 
             if (type === "LINKS") {
-                const pCode = decoder.decode(new Uint8Array(buffer, 12, 14)).replace(/\0/g, '').trim();
-                const sCode = decoder.decode(new Uint8Array(buffer, 26, 14)).replace(/\0/g, '').trim();
-                const sName = decoder.decode(new Uint8Array(buffer, 40, 60)).replace(/\0/g, '').trim();
+                const pCode = decoder.decode(new Uint8Array(buffer, 16, 14)).replace(/\0/g, '').trim();
+                const sCode = decoder.decode(new Uint8Array(buffer, 30, 14)).replace(/\0/g, '').trim();
+                const sName = decoder.decode(new Uint8Array(buffer, 44, 56)).replace(/\0/g, '').trim();
 
                 if (initialFullData) {
                     initialFullData.productAffCode = pCode;
