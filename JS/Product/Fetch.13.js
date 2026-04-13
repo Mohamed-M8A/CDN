@@ -3,10 +3,6 @@
     const IMG_BASE_URL = "https://ae-pic-a1.aliexpress-media.com/kf/";
     const country = (localStorage.getItem("Cntry") || "SA").toUpperCase();
     
-    const STRICT_REGIONS = ["SA", "AE", "OM", "MA", "DZ", "TN"];
-    const FILES_PER_REGION = 5; 
-    const SYSTEM_OFFSET = 2;
-
     let initialFullData = null;
     let fileMap = {};
 
@@ -27,18 +23,21 @@
             const mapText = await mapRes.text();
             const hashes = mapText.trim().split('\n').map(h => h.trim());
 
-            const regionIdx = STRICT_REGIONS.indexOf(country);
-            if (regionIdx === -1) return;
+            const regions = ["SA", "AE", "OM", "MA", "DZ", "TN"];
+            const currentRegionIndex = regions.indexOf(country);
 
-            const startIdx = SYSTEM_OFFSET + (regionIdx * FILES_PER_REGION);
-
-            fileMap = {
-                feed: `${country}_feed_${hashes[startIdx]}.bin`,
-                promo: `${country}_promo_${hashes[startIdx + 1]}.bin`,
-                sku: `${country}_sku_${hashes[startIdx + 2]}.bin`,
-                chart: `${country}_fluctuation_${hashes[startIdx + 3]}.bin`,
-                links: `${country}_links_${hashes[startIdx + 4]}.bin`
-            };
+            if (currentRegionIndex !== -1) {
+                const startIdx = 2 + (currentRegionIndex * 5);
+                fileMap = {
+                    feed: `${country}_feed_${hashes[startIdx]}.bin`,
+                    promo: `${country}_promo_${hashes[startIdx + 1]}.bin`,
+                    sku: `${country}_sku_${hashes[startIdx + 2]}.bin`,
+                    chart: `${country}_fluctuation_${hashes[startIdx + 3]}.bin`,
+                    links: `${country}_links_${hashes[startIdx + 4]}.bin`
+                };
+            } else {
+                return;
+            }
 
             const domUIDStr = document.querySelector(".UID")?.textContent.trim();
             if (!domUIDStr) return;
