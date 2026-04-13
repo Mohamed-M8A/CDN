@@ -62,152 +62,19 @@
         }
     };
 
-    const init = () => {
-        UILayout.injectEmptyShelf();
-        UILayout.renderReviewSection();
-    };
+// =================== Data1 ===================
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+const init=()=>{UILayout.injectEmptyShelf();UILayout.renderReviewSection()};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{init()}
+const countryInfo={"SA":{name:"السعودية",symbol:"ر.س",rate:1},"AE":{name:"الإمارات",symbol:"د.إ",rate:0.98},"OM":{name:"عُمان",symbol:"ر.ع",rate:0.10},"MA":{name:"المغرب",symbol:"د.م",rate:2.70},"DZ":{name:"الجزائر",symbol:"د.ج",rate:36.00},"TN":{name:"تونس",symbol:"د.ت",rate:0.83},};const activeCountry=localStorage.getItem("Cntry")||"SA";const formatPrice=num=>parseFloat(num).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});window.renderSKUs=function(skuList){const skuWrapper=document.getElementById('sku-images-wrapper')||Object.assign(document.createElement('div'),{id:'sku-images-wrapper'});skuWrapper.style.display='contents';skuWrapper.innerHTML="";const thumbSlider=document.querySelector('.thumbnails-slider');if(thumbSlider)thumbSlider.appendChild(skuWrapper);skuList.forEach(item=>{const img=document.createElement("img");img.src=item.image;img.alt=item.props;img.title=item.props;img.loading="lazy";img._skuData=item;img.addEventListener('click',()=>{if(typeof window.updateSKUPrice==="function")window.updateSKUPrice(item);});skuWrapper.appendChild(img)})};window.injectData=function(data){UILayout.injectEmptyShelf();const config=countryInfo[activeCountry]||countryInfo.SA;const weight=config.rate||1;const symbol=config.symbol;const countryName=config.name;const pOriginal=data.priceOriginal;const pDiscounted=data.priceDiscounted;const diff=pOriginal-pDiscounted;document.querySelectorAll(".price-original").forEach(el=>el.textContent=`${formatPrice(pOriginal)} ${symbol}`);document.querySelectorAll(".price-discounted").forEach(el=>el.textContent=`${formatPrice(pDiscounted)} ${symbol}`);const savingEl=document.querySelector(".price-saving");const discountEl=document.querySelector(".discount-percentage");if(diff>0&&savingEl){savingEl.innerHTML=`<span class="save-label">وفر:</span> <span class="save-amount">${formatPrice(diff)} ${symbol}</span>`;const weightedDiff=diff/weight;let color="#7f8c8d";if(weightedDiff<100)color="#16a085";else if(weightedDiff<400)color="#1abc9c";else if(weightedDiff<600)color="#3498db";else if(weightedDiff<900)color="#2ecc71";else if(weightedDiff<1200)color="#e67e22";else if(weightedDiff<1600)color="#c0392b";else if(weightedDiff<2000)color="#f5008b";else if(weightedDiff<3000)color="#8e44ad";else color="#FFD700";savingEl.style.color=color;savingEl.style.fontWeight="bold";if(weightedDiff>=500){const saveAmount=savingEl.querySelector(".save-amount");if(saveAmount&&!saveAmount.querySelector(".fire-gif")){const fireGif=document.createElement("img");fireGif.src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj5J9EL4a9cV3VWmcK1ZYD6OYEB-1APv9gggocpaa7jAJXdgvX8Q7QiaAZC9NxcN25f8MTRSYD6SKwT1LSjL0SB1ovJH1SSkRmqH2y3f1NzWGkC0BE-gpj5bTc1OKi3Rfzh44sAAJSvOS5uq7Ut9ETN-V9LgKim0dkmEVmqUWa-2ZGA7FvMAYrVaJgn/w199-h200/fire%20(1).gif";fireGif.style.cssText="width:20px; vertical-align:middle; margin-left:5px;";fireGif.classList.add("fire-gif");saveAmount.appendChild(fireGif)}}
+if(discountEl)discountEl.textContent=`-${Math.round((diff / pOriginal) * 100)}%`}
 
-    const countryInfo = {
-        "SA": { name: "السعودية", symbol: "ر.س", rate: 1 },
-        "AE": { name: "الإمارات", symbol: "د.إ", rate: 0.98 },
-        "OM": { name: "عُمان", symbol: "ر.ع", rate: 0.10 },
-        "MA": { name: "المغرب", symbol: "د.م", rate: 2.70 },
-        "DZ": { name: "الجزائر", symbol: "د.ج", rate: 36.00 },
-        "TN": { name: "تونس", symbol: "د.ت", rate: 0.83 },
-    };
+// =================== Data2 ===================
 
-    const activeCountry = localStorage.getItem("Cntry") || "SA";
-    const formatPrice = num => parseFloat(num).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-    window.renderSKUs = function(skuList) {
-        const skuWrapper = document.getElementById('sku-images-wrapper') || Object.assign(document.createElement('div'), {id: 'sku-images-wrapper'});
-        skuWrapper.style.display = 'contents';
-        skuWrapper.innerHTML = "";
         
-        const thumbSlider = document.querySelector('.thumbnails-slider');
-        if (thumbSlider) thumbSlider.appendChild(skuWrapper);
-
-        skuList.forEach(item => {
-            const img = document.createElement("img");
-            img.src = item.image;
-            img.alt = item.props;
-            img.title = item.props;
-            img.loading = "lazy";
-            img._skuData = item; 
-            
-            img.addEventListener('click', () => {
-                if (typeof window.updateSKUPrice === "function") window.updateSKUPrice(item);
-            });
-            
-            skuWrapper.appendChild(img);
-        });
-    };
-
-    window.injectData = function(data) {
-        UILayout.injectEmptyShelf();
-        const config = countryInfo[activeCountry] || countryInfo["SA"];
-        const weight = config.rate || 1; 
-        const symbol = config.symbol;
-        const countryName = config.name;
-        const pOriginal = data.priceOriginal;
-        const pDiscounted = data.priceDiscounted;
-        const diff = pOriginal - pDiscounted;
-
-        document.querySelectorAll(".price-original").forEach(el => el.textContent = `${formatPrice(pOriginal)} ${symbol}`);
-        document.querySelectorAll(".price-discounted").forEach(el => el.textContent = `${formatPrice(pDiscounted)} ${symbol}`);
-
-        const savingEl = document.querySelector(".price-saving");
-        const discountEl = document.querySelector(".discount-percentage");
-
-        if (diff > 0 && savingEl) {
-            savingEl.innerHTML = `<span class="save-label">وفر:</span> <span class="save-amount">${formatPrice(diff)} ${symbol}</span>`;
-            const weightedDiff = diff / weight; 
-            let color = "#7f8c8d";
-            if (weightedDiff < 100) color = "#16a085";
-            else if (weightedDiff < 400) color = "#1abc9c";
-            else if (weightedDiff < 600) color = "#3498db";
-            else if (weightedDiff < 900) color = "#2ecc71";
-            else if (weightedDiff < 1200) color = "#e67e22";
-            else if (weightedDiff < 1600) color = "#c0392b";
-            else if (weightedDiff < 2000) color = "#f5008b";
-            else if (weightedDiff < 3000) color = "#8e44ad";
-            else color = "#FFD700";
-            
-            savingEl.style.color = color;
-            savingEl.style.fontWeight = "bold";
-
-            if (weightedDiff >= 500) {
-                const saveAmount = savingEl.querySelector(".save-amount");
-                if (saveAmount && !saveAmount.querySelector(".fire-gif")) {
-                    const fireGif = document.createElement("img");
-                    fireGif.src = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj5J9EL4a9cV3VWmcK1ZYD6OYEB-1APv9gggocpaa7jAJXdgvX8Q7QiaAZC9NxcN25f8MTRSYD6SKwT1LSjL0SB1ovJH1SSkRmqH2y3f1NzWGkC0BE-gpj5bTc1OKi3Rfzh44sAAJSvOS5uq7Ut9ETN-V9LgKim0dkmEVmqUWa-2ZGA7FvMAYrVaJgn/w199-h200/fire%20(1).gif";
-                    fireGif.style.cssText = "width:20px; vertical-align:middle; margin-left:5px;";
-                    fireGif.classList.add("fire-gif");
-                    saveAmount.appendChild(fireGif);
-                }
-            }
-            if (discountEl) discountEl.textContent = `-${Math.round((diff / pOriginal) * 100)}%`;
-        }
-
-        const shipLabel = document.getElementById("shipLabel");
-        if (shipLabel) shipLabel.textContent = `الشحن إلى ${countryName}`;
-
-        const shipToValue = document.querySelector(".ship-to-value");
-        if (shipToValue) {
-            const canShip = data.minDelivery > 0;
-            shipToValue.textContent = canShip ? "متوفر" : "غير متوفر";
-            shipToValue.style.color = canShip ? "#00b894" : "#ff7675";
-        }
-
-        document.querySelectorAll(".fee-value").forEach(el => {
-            const isFree = data.shippingFee <= 0;
-            el.textContent = isFree ? "شحن مجاني" : `${formatPrice(data.shippingFee)} ${symbol}`;
-            if (isFree) {
-                el.style.color = "#00b894";
-                el.style.fontWeight = "bold";
-            }
-        });
-
-        document.querySelectorAll(".time-value").forEach(el => {
-            const min = data.minDelivery;
-            const max = data.maxDelivery;
-            el.textContent = (min === max || !max) ? `${min} أيام` : `${max}-${min} أيام`;
-        });
-
-        const availValue = document.querySelector(".avail-value");
-        if (availValue) {
-            availValue.textContent = data.inStock ? "متوفر الآن" : "نفذت الكمية";
-            availValue.style.color = data.inStock ? "#0984e3" : "#636e72";
-        }
-
-        const ordersEl = document.querySelector(".orders-count");
-        if (ordersEl) ordersEl.textContent = data.orders.toLocaleString();
-
-        const ratingValueEl = document.getElementById("ratingValue");
-        if (ratingValueEl) ratingValueEl.textContent = data.score.toFixed(1);
-
-        const ratingCountEl = document.getElementById("goToReviews");
-        if (ratingCountEl) ratingCountEl.textContent = `${(data.reviews || 0).toLocaleString()} تقييمات`;
-
-        UILayout.drawStars(document.getElementById("stars"), parseFloat(data.score) || 0);
-
-        const buyBtn = document.querySelector(".buy-button");
-        if (buyBtn && data.productAffCode) {
-            buyBtn.href = `https://s.click.aliexpress.com/${data.productAffCode}`;
-        }
-
-        const storeWrapper = document.getElementById('store-bar-wrapper');
-        if (storeWrapper && data.storeName) {
-            const storeLink = `/p/store.html?store=${data.storeId}`;
-            const defaultImg = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiwyg94bd89-ILQ8wlX5_Zvu31hLoGcooTyvF5kr88-uCv9QCZOEBDBVycAMDaerf2nnW9TB1EZdoJcmDS641L5ZsDMPFC8p3csM2jTsm8mP_ue_G1A6W5Cn-bohNUkDTU60v-AA5EAFaXceHJF99RzCNWAfvtzui1nitecMqZa2DA/s1600/17d3d08b-825f-43c8-814f-72b91d3a8c8c.png";
-            
-            storeWrapper.innerHTML = `
+const shipLabel=document.getElementById("shipLabel");if(shipLabel)shipLabel.textContent=`الشحن إلى ${countryName}`;const shipToValue=document.querySelector(".ship-to-value");if(shipToValue){const canShip=data.minDelivery>0;shipToValue.textContent=canShip?"متوفر":"غير متوفر";shipToValue.style.color=canShip?"#00b894":"#ff7675"}
+document.querySelectorAll(".fee-value").forEach(el=>{const isFree=data.shippingFee<=0;el.textContent=isFree?"شحن مجاني":`${formatPrice(data.shippingFee)} ${symbol}`;if(isFree){el.style.color="#00b894";el.style.fontWeight="bold"}});document.querySelectorAll(".time-value").forEach(el=>{const min=data.minDelivery;const max=data.maxDelivery;el.textContent=(min===max||!max)?`${min} أيام`:`${max}-${min} أيام`});const availValue=document.querySelector(".avail-value");if(availValue){availValue.textContent=data.inStock?"متوفر الآن":"نفذت الكمية";availValue.style.color=data.inStock?"#0984e3":"#636e72"}
+const ordersEl=document.querySelector(".orders-count");if(ordersEl)ordersEl.textContent=data.orders.toLocaleString();const ratingValueEl=document.getElementById("ratingValue");if(ratingValueEl)ratingValueEl.textContent=data.score.toFixed(1);const ratingCountEl=document.getElementById("goToReviews");if(ratingCountEl)ratingCountEl.textContent=`${(data.reviews || 0).toLocaleString()} تقييمات`;UILayout.drawStars(document.getElementById("stars"),parseFloat(data.score)||0);const buyBtn=document.querySelector(".buy-button");if(buyBtn&&data.productAffCode){buyBtn.href=`https://s.click.aliexpress.com/${data.productAffCode}`}
+const storeWrapper=document.getElementById('store-bar-wrapper');if(storeWrapper&&data.storeName){const storeLink=`/p/store.html?store=${data.storeId}`;const defaultImg="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiwyg94bd89-ILQ8wlX5_Zvu31hLoGcooTyvF5kr88-uCv9QCZOEBDBVycAMDaerf2nnW9TB1EZdoJcmDS641L5ZsDMPFC8p3csM2jTsm8mP_ue_G1A6W5Cn-bohNUkDTU60v-AA5EAFaXceHJF99RzCNWAfvtzui1nitecMqZa2DA/s1600/17d3d08b-825f-43c8-814f-72b91d3a8c8c.png";storeWrapper.innerHTML=`
                 <div class="bar">
                     <img src="${defaultImg}" class="profile-image" alt="Store">
                     <div class="text">${data.storeName}</div>
@@ -216,10 +83,8 @@
                         <a href="https://s.click.aliexpress.com/${data.storeAffCode}" target="_blank" rel="nofollow" class="button">متابعة</a>
                     </div>
                 </div>
-            `;
-        }
-    };
-})();
+            `}}})()
+
 
 // =================== Promo ===================
 
