@@ -5,6 +5,7 @@
     
     let initialOrders = 0, initialScore = 0, initialReviews = 0, initialStock = false;
     let initialFullData = null;
+    let fileMap = {};
 
     const cleanProps = (str) => {
         try {
@@ -18,11 +19,26 @@
 
     async function startEngine() {
         try {
+            const mapRes = await fetch(`${BASE_URL}map.bin?v=${Date.now()}`);
+            if (!mapRes.ok) return;
+            const mapText = await mapRes.text();
+            const hashes = mapText.trim().split('\n').map(h => h.trim());
+
+            if (country === "SA") {
+                fileMap = {
+                    feed: `SA_feed_${hashes[2]}.bin`,
+                    promo: `SA_promo_${hashes[3]}.bin`,
+                    sku: `SA_sku_${hashes[4]}.bin`,
+                    chart: `SA_fluctuation_${hashes[5]}.bin`,
+                    links: `SA_links_${hashes[6]}.bin`
+                };
+            }
+
             const domUIDStr = document.querySelector(".UID")?.textContent.trim();
             if (!domUIDStr) return;
             const targetUID = BigInt(domUIDStr);
 
-            const res = await fetch(`${BASE_URL}${country}_feed.bin?v=${Date.now()}`);
+            const res = await fetch(`${BASE_URL}${fileMap.feed}`);
             if (!res.ok) return;
 
             const buffer = await res.arrayBuffer();
@@ -33,27 +49,19 @@
                 if (view.getBigUint64(i, true) === targetUID) {
                     const flags = view.getUint8(i + 31);
                     const recordIndex = i / stride;
-                    
                     window.currentRecordIndex = recordIndex;
 
-                    const extractedStoreID = view.getUint32(i + 8, true);
-
-                    initialOrders = view.getUint16(i + 24, true);
-                    initialReviews = view.getUint16(i + 26, true);
-                    initialScore = view.getUint8(i + 28) / 10;
-                    initialStock = (flags & 0x20) !== 0;
-
                     initialFullData = {
-                        storeId: extractedStoreID,
+                        storeId: view.getUint32(i + 8, true),
                         priceOriginal: view.getUint32(i + 12, true) / 100,
                         priceDiscounted: view.getUint32(i + 16, true) / 100,
                         shippingFee: view.getUint32(i + 20, true) / 100,
-                        orders: initialOrders,
-                        score: initialScore,
-                        reviews: initialReviews,
+                        orders: view.getUint16(i + 24, true),
+                        reviews: view.getUint16(i + 26, true),
+                        score: view.getUint8(i + 28) / 10,
                         minDelivery: view.getUint8(i + 29),
                         maxDelivery: view.getUint8(i + 30),
-                        inStock: initialStock,
+                        inStock: (flags & 0x20) !== 0,
                         hasSKU: (flags & 0x40) !== 0,
                         hasPromo: (flags & 0x80) !== 0,
                         productAffCode: "",
@@ -61,15 +69,12 @@
                         storeName: ""
                     };
 
-                    if (typeof window.injectData === "function") {
-                        window.injectData(initialFullData);
-                    }
+                    if (typeof window.injectData === "function") window.injectData(initialFullData);
                     
-                    fetchRange(`${BASE_URL}${country}_links.bin`, recordIndex * 100, 100, "LINKS");
-
-                    if (initialFullData.hasSKU) fetchRange(`${BASE_URL}${country}_sku.bin`, recordIndex * 2888, 2888, "SKU");
-                    if (initialFullData.hasPromo) fetchRange(`${BASE_URL}${country}_promo.bin`, recordIndex * 32, 32, "PROMO");
-                    fetchRange(`${BASE_URL}${country}_fluctuation.bin`, recordIndex * 2932, 2932, "CHART");
+                    fetchRange(`${BASE_URL}${fileMap.links}`, recordIndex * 100, 100, "LINKS");
+                    if (initialFullData.hasSKU) fetchRange(`${BASE_URL}${fileMap.sku}`, recordIndex * 2888, 2888, "SKU");
+                    if (initialFullData.hasPromo) fetchRange(`${BASE_URL}${fileMap.promo}`, recordIndex * 32, 32, "PROMO");
+                    fetchRange(`${BASE_URL}${fileMap.chart}`, recordIndex * 2932, 2932, "CHART");
                     
                     break;
                 }
@@ -94,15 +99,8 @@
                     initialFullData.productAffCode = pCode;
                     initialFullData.storeAffCode = sCode;
                     initialFullData.storeName = sName;
-
-                    localStorage.setItem(`store_${initialFullData.storeId}`, JSON.stringify({
-                        name: sName,
-                        aff: sCode
-                    }));
-
-                    if (typeof window.injectData === "function") {
-                        window.injectData(initialFullData);
-                    }
+                    localStorage.setItem(`store_${initialFullData.storeId}`, JSON.stringify({name: sName, aff: sCode}));
+                    if (typeof window.injectData === "function") window.injectData(initialFullData);
                 }
             } else if (type === "SKU") {
                 const skuList = [];
