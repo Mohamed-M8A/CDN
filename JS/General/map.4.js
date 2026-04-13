@@ -51,15 +51,18 @@ window.MAP_ENGINE = {
         const code = (localStorage.getItem("Cntry") || "SA").toUpperCase();
         return MAP_CONFIG.REGIONS[code] || MAP_CONFIG.REGIONS["SA"];
     },
+
     getStride(type) {
         return MAP_CONFIG.STRIDES[type.toUpperCase()];
     },
+
     formatPrice(val) {
         return (val / 100).toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
     },
+
     parseStatus(byte) {
         return {
             hasPromo: !!(byte & (1 << MAP_CONFIG.STATUS_BITS.PROMO)),
@@ -67,5 +70,22 @@ window.MAP_ENGINE = {
             inStock: !!(byte & (1 << MAP_CONFIG.STATUS_BITS.STOCK)),
             trend: byte & MAP_CONFIG.STATUS_BITS.TREND_MASK
         };
+    },
+
+    minutesToDate(minutes) {
+        const start = new Date(MAP_CONFIG.EPOCH_START);
+        return new Date(start.getTime() + minutes * 60000);
+    },
+
+    toBase64URL(bytes) {
+        let lastIndex = bytes.length - 1;
+        while (lastIndex >= 0 && bytes[lastIndex] === 0) lastIndex--;
+        const cleanBytes = bytes.slice(0, lastIndex + 1);
+        return btoa(String.fromCharCode(...cleanBytes))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    },
+
+    getOffset(file, field) {
+        return MAP_CONFIG.OFFSETS[file.toUpperCase()][field.toUpperCase()];
     }
 };
