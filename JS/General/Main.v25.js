@@ -1,10 +1,10 @@
 const COUNTRY_MAP = {
-    "SA": { symbol: "ر.س" },
-    "AE": { symbol: "د.إ" },
-    "OM": { symbol: "ر.ع" },
-    "MA": { symbol: "د.م" },
-    "DZ": { symbol: "د.ج" },
-    "TN": { symbol: "د.ت" }
+    "SA": { symbol: "ر.س", index: 0 },
+    "AE": { symbol: "د.إ", index: 1 },
+    "OM": { symbol: "ر.ع", index: 2 },
+    "MA": { symbol: "د.م", index: 3 },
+    "DZ": { symbol: "د.ج", index: 4 },
+    "TN": { symbol: "د.ت", index: 5 }
 };
 
 class Renderer {
@@ -12,7 +12,7 @@ class Renderer {
         this.container = document.getElementById(containerId);
         this.placeholder = placeholder;
         const activeCntry = localStorage.getItem("Cntry") || "SA";
-        this.currencyConfig = COUNTRY_MAP[activeCntry] || COUNTRY_MAP["SA"];
+        this.currencyConfig = COUNTRY_MAP[activeCntry.toUpperCase()] || COUNTRY_MAP["SA"];
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -160,11 +160,16 @@ async function startWidget() {
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('query');
     const storeId = urlParams.get('store');
+    const country = (localStorage.getItem("Cntry") || "SA").toUpperCase();
+    const countryInfo = COUNTRY_MAP[country] || COUNTRY_MAP["SA"];
 
     loadMoreBtn.onclick = renderNextBatch;
+    
     worker.postMessage({
+        type: 'INIT',
         baseUrl: WIDGET_CONFIG.BASE_URL,
-        country: localStorage.getItem("Cntry") || "SA",
+        country: country,
+        countryIndex: countryInfo.index,
         query: query,
         storeId: storeId
     });
