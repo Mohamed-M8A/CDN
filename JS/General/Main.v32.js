@@ -116,74 +116,74 @@ const WIDGET_CONFIG = {
 async function startWidget() {
     const root = document.getElementById(WIDGET_CONFIG.ROOT_ID);
     if (!root) return;
-    
-    root.innerHTML = `
-        <div id="product-posts" class="product-grid"></div>
-        <div id="loader" class="loader-container"><div class="spinner"></div></div>
-        <button id="load-more" class="load-more-btn" style="display:none;">عرض المزيد</button>`;
-    
-    const grid = document.getElementById('product-posts');
-    const loadMoreBtn = document.getElementById('load-more');
-    const loader = document.getElementById('loader');
-    const renderer = new Renderer('product-posts', WIDGET_CONFIG.PLACEHOLDER);
-    
-    let currentIndex = 0;
-    let storeData = { core: [], feed: new Map() };
 
-    let fileMap = null;
     try {
         const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}map.json?v=${Date.now()}`);
-        fileMap = await mapRes.json();
+        const fileMap = await mapRes.json();
+        const country = localStorage.getItem("Cntry") || "SA";
+
+        const coreFile = `core_${fileMap.core}.bin`;
+        const metaFile = `meta_${fileMap.meta}.bin`;
+        const feedFile = fileMap.regions[country]?.feed ? `${country}_feed_${fileMap.regions[country].feed}.bin` : null;
+
+        if (!feedFile) throw new Error("Region not found in map");
+
+        root.innerHTML = `
+            <div id="product-posts" class="product-grid"></div>
+            <div id="loader" class="loader-container"><div class="spinner"></div></div>
+            <button id="load-more" class="load-more-btn" style="display:none;">عرض المزيد</button>`;
+        
+        const grid = document.getElementById('product-posts');
+        const loadMoreBtn = document.getElementById('load-more');
+        const loader = document.getElementById('loader');
+        const renderer = new Renderer('product-posts', WIDGET_CONFIG.PLACEHOLDER);
+        
+        let currentIndex = 0;
+        let storeData = { core: [], feed: new Map() };
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+
+        const renderNextBatch = () => {
+            if (storeData.core.length === 0) {
+                grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
+                return;
+            }
+            const size = currentIndex === 0 ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
+            const limit = Math.min(currentIndex + size, storeData.core.length);
+            const batch = storeData.core.slice(currentIndex, limit);
+            renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed);
+            currentIndex = limit;
+            loadMoreBtn.style.display = currentIndex >= storeData.core.length ? 'none' : 'block';
+        };
+
+        worker.onmessage = (e) => {
+            if (e.data.type === 'DONE') {
+                storeData = e.data;
+                loader.style.display = 'none';
+                renderNextBatch();
+            } else if (e.data.type === 'ERROR') {
+                loader.style.display = 'none';
+                grid.innerHTML = '<div class="error-msg">حدث خطأ أثناء تحميل البيانات</div>';
+            }
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const query = urlParams.get('query');
+        const storeId = urlParams.get('store');
+
+        loadMoreBtn.onclick = renderNextBatch;
+        worker.postMessage({
+            baseUrl: WIDGET_CONFIG.BASE_URL,
+            coreFile: coreFile,
+            metaFile: metaFile,
+            feedFile: feedFile,
+            query: query,
+            storeId: storeId
+        });
     } catch (err) {
-        grid.innerHTML = '<div class="error-msg">خطأ في الاتصال بالخادم</div>';
-        loader.style.display = 'none';
-        return;
+        console.error(err);
     }
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
-
-    const renderNextBatch = () => {
-        if (storeData.core.length === 0) {
-            grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
-            return;
-        }
-        const size = currentIndex === 0 ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
-        const limit = Math.min(currentIndex + size, storeData.core.length);
-        const batch = storeData.core.slice(currentIndex, limit);
-        renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed);
-        currentIndex = limit;
-        loadMoreBtn.style.display = currentIndex >= storeData.core.length ? 'none' : 'block';
-    };
-
-    worker.onmessage = (e) => {
-        if (e.data.type === 'DONE') {
-            storeData = e.data;
-            loader.style.display = 'none';
-            renderNextBatch();
-        } else if (e.data.type === 'ERROR') {
-            loader.style.display = 'none';
-            grid.innerHTML = '<div class="error-msg">حدث خطأ أثناء تحميل البيانات</div>';
-        }
-    };
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const query = urlParams.get('query');
-    const storeId = urlParams.get('store');
-    const country = localStorage.getItem("Cntry") || "SA";
-
-    const coreHash = fileMap.core;
-    const feedHash = fileMap.regions[country]?.feed;
-
-    loadMoreBtn.onclick = renderNextBatch;
-    worker.postMessage({
-        baseUrl: WIDGET_CONFIG.BASE_URL,
-        country: country,
-        query: query,
-        storeId: storeId,
-        coreName: `core_${coreHash}.bin`,
-        feedName: `${country}_feed_${feedHash}.bin`
-    });
 }
 
 document.addEventListener("DOMContentLoaded", startWidget);
