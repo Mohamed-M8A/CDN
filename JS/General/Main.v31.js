@@ -97,7 +97,7 @@ class Renderer {
     renderBatch(products, domain, feedMap) {
         const fragment = document.createDocumentFragment();
         products.forEach(p => {
-            const card = this.createCard(p, domain, feedMap.get(BigInt(p.id)));
+            const card = this.createCard(p, domain, feedMap.get(p.id));
             if (card) fragment.appendChild(card);
         });
         this.container.appendChild(fragment);
@@ -130,6 +130,16 @@ async function startWidget() {
     let currentIndex = 0;
     let storeData = { core: [], feed: new Map() };
 
+    let fileMap = null;
+    try {
+        const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}map.json?v=${Date.now()}`);
+        fileMap = await mapRes.json();
+    } catch (err) {
+        grid.innerHTML = '<div class="error-msg">خطأ في الاتصال بالخادم</div>';
+        loader.style.display = 'none';
+        return;
+    }
+
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const worker = new Worker(URL.createObjectURL(blob));
 
@@ -160,13 +170,19 @@ async function startWidget() {
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('query');
     const storeId = urlParams.get('store');
+    const country = localStorage.getItem("Cntry") || "SA";
+
+    const coreHash = fileMap.core;
+    const feedHash = fileMap.regions[country]?.feed;
 
     loadMoreBtn.onclick = renderNextBatch;
     worker.postMessage({
         baseUrl: WIDGET_CONFIG.BASE_URL,
-        country: localStorage.getItem("Cntry") || "SA",
+        country: country,
         query: query,
-        storeId: storeId
+        storeId: storeId,
+        coreName: `core_${coreHash}.bin`,
+        feedName: `${country}_feed_${feedHash}.bin`
     });
 }
 
