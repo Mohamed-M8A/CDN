@@ -196,15 +196,29 @@
         if (ratingCountEl) ratingCountEl.textContent = `${(data.reviews || 0).toLocaleString()} تقييمات`;
 
         UILayout.drawStars(document.getElementById("stars"), parseFloat(data.score) || 0);
+
+
         
+        const affLink = data.productAffCode ? `https://s.click.aliexpress.com/${data.productAffCode}` : null;
+
         const buyBtn = document.querySelector(".buy-button");
-        if (buyBtn && data.productAffCode) {
-            buyBtn.href = `https://s.click.aliexpress.com/${data.productAffCode}`;
+        if (buyBtn && affLink) {
+            buyBtn.href = affLink;
         }
 
         const moreRev = document.querySelector(".more-reviews-link a");
-        if (moreRev && data.productAffCode) {
-            moreRev.href = `https://s.click.aliexpress.com/${data.productAffCode}`;
+        if (moreRev && affLink) {
+            moreRev.href = affLink;
+        } else if (affLink) {
+            setTimeout(() => {
+                const retryRev = document.querySelector(".more-reviews-link a");
+                if (retryRev) retryRev.href = affLink;
+            }, 1000);
+        }
+
+        const moreRevContainer = document.querySelector(".more-reviews-link a");
+        if (moreRevContainer && affLink) {
+            moreRevContainer.href = affLink;
         }
 
         const storeWrapper = document.getElementById('store-bar-wrapper');
@@ -223,7 +237,7 @@
                 </div>
             `;
         }
-    }; 
+    };
 
 })();
 
