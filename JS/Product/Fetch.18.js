@@ -35,7 +35,6 @@
         const hash = fileMap.regions[country]?.[type];
         if (!hash) return null;
 
-        // Extract size and count from hash (first 16 hex chars)
         window.currentFileInfo.size = parseInt(hash.substring(0, 8), 16);
         window.currentFileInfo.records = parseInt(hash.substring(8, 16), 16);
 
