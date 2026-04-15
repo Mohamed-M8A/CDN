@@ -588,7 +588,7 @@ window.renderBinaryChart = function(buffer) {
                 await navigator.share({
                     files: [file],
                     title: productName,
-                    text: `تقرير أسعار ${productName}\nلمزيد من التفاصيل: ${window.location.href}`,
+                    text: `تقرير أسعار ${productName}\nالمصدر:`,
                     url: window.location.href
                 });
             } catch (err) {}
@@ -609,7 +609,7 @@ window.renderBinaryChart = function(buffer) {
                 <div id="btn-download-container" style="display: flex; justify-content: center; gap: 10px; margin: 25px 0; flex-wrap: wrap;">
                     <button id="btn-download-chart" onclick="downloadChartAsImage('download')" 
                         style="padding: 12px 24px; background: #ff6000; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 8px;">
-                        <span>📊</span> حفظ الصورة
+                        <span>📊</span> حفظ الرسم البياني
                     </button>
                     <button id="btn-share-chart" onclick="downloadChartAsImage('share')" 
                         style="padding: 12px 24px; background: #3498db; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 8px;">
