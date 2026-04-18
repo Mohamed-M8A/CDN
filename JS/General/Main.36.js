@@ -124,7 +124,7 @@ async function startWidget() {
 
         const coreFile = `General/core_${fileMap.core}.bin`;
         const metaFile = `General/meta_${fileMap.meta}.bin`;
-        const feedFile = fileMap.regions[country]?.feed ? `${country}/feed_${fileMap.regions[country].feed}.bin` : null;
+        const feedFile = fileMap.regions[country]?.feed ? `${country}/${country}_feed_${fileMap.regions[country].feed}.bin` : null;
 
         if (!feedFile) throw new Error("Region not found in map");
 
