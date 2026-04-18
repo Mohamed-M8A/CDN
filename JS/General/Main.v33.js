@@ -118,13 +118,13 @@ async function startWidget() {
     if (!root) return;
 
     try {
-        const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}map.json?v=${Date.now()}`);
+        const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
         const fileMap = await mapRes.json();
         const country = localStorage.getItem("Cntry") || "SA";
 
-        const coreFile = `core_${fileMap.core}.bin`;
-        const metaFile = `meta_${fileMap.meta}.bin`;
-        const feedFile = fileMap.regions[country]?.feed ? `${country}_feed_${fileMap.regions[country].feed}.bin` : null;
+        const coreFile = `General/core_${fileMap.core}.bin`;
+        const metaFile = `General/meta_${fileMap.meta}.bin`;
+        const feedFile = fileMap.regions[country]?.feed ? `${country}/${country}_feed_${fileMap.regions[country].feed}.bin` : null;
 
         if (!feedFile) throw new Error("Region not found in map");
 
