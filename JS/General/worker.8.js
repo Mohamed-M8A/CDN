@@ -21,14 +21,14 @@ class BinaryParser {
 
     static parseFeed(buffer, targetStoreId = null) {
         const map = new Map();
-        const matchedIds = new Set();
+        const storeMatchedIds = new Set();
         const view = new DataView(buffer);
         for (let i = 0; i < buffer.byteLength; i += 32) {
             const id = view.getBigUint64(i, true);
             const storeId = view.getUint32(i + 8, true);
-            if (targetStoreId !== null && storeId !== targetStoreId) continue;
-            if (targetStoreId !== null) matchedIds.add(id);
             const status = view.getUint8(i + 31);
+            if (targetStoreId !== null && storeId !== targetStoreId) continue;
+            if (targetStoreId !== null) storeMatchedIds.add(id);
             map.set(id, {
                 original: view.getUint32(i + 12, true) / 100,
                 price: view.getUint32(i + 16, true) / 100,
@@ -38,23 +38,36 @@ class BinaryParser {
                 status: { promo: (status >> 7) & 1, inStock: (status >> 5) & 1 }
             });
         }
-        return { feedMap: map, matchedIds };
+        return { feedMap: map, matchedIds: storeMatchedIds };
     }
 }
 
 self.onmessage = async (e) => {
     const { baseUrl, coreFile, metaFile, feedFile, query, storeId } = e.data;
     const decoder = new TextDecoder();
+    const CACHE_NAME = 'souq-cache-v1';
+
+    async function getResponse(fileName, hours) {
+        const url = baseUrl + fileName;
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(url);
+        if (cached) {
+            const date = cached.headers.get('date');
+            if (date && (Date.now() - new Date(date).getTime()) < hours * 3600000) return cached;
+        }
+        const res = await fetch(url);
+        if (res.ok) { cache.put(url, res.clone()); return res; }
+        return null;
+    }
+
     try {
-        const [feedRes, metaRes] = await Promise.all([
-            fetch(baseUrl + feedFile),
-            metaFile ? fetch(baseUrl + metaFile) : Promise.resolve(null)
-        ]);
+        const feedRes = await getResponse(feedFile, 1);
         const feedBuf = await feedRes.arrayBuffer();
         const { feedMap, matchedIds: storeMatchedIds } = BinaryParser.parseFeed(feedBuf, storeId ? parseInt(storeId) : null);
-        
+
         let allowedIds = storeId ? storeMatchedIds : null;
-        if (query && metaRes) {
+        if (query && metaFile) {
+            const metaRes = await getResponse(metaFile, 24);
             const metaBuf = await metaRes.arrayBuffer();
             const metaData = new Uint8Array(metaBuf);
             const metaView = new DataView(metaBuf);
@@ -69,10 +82,14 @@ self.onmessage = async (e) => {
                 }
                 if (match) searchIds.add(metaView.getBigUint64(i, true));
             }
-            allowedIds = storeId ? new Set([...searchIds].filter(x => storeMatchedIds.has(x))) : searchIds;
+            if (storeId) {
+                allowedIds = new Set([...searchIds].filter(id => storeMatchedIds.has(id)));
+            } else {
+                allowedIds = searchIds;
+            }
         }
 
-        const coreRes = await fetch(baseUrl + coreFile);
+        const coreRes = await getResponse(coreFile, 24);
         const reader = coreRes.body.getReader();
         let leftover = new Uint8Array(0);
 
