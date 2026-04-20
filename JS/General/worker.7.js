@@ -9,8 +9,7 @@ class BinaryParser {
         return h >>> 0;
     }
 
-    static parseCoreRecord(uint8, offset, decoder) {
-        const view = new DataView(uint8.buffer, uint8.byteOffset + offset, 442);
+    static parseCoreRecord(uint8, offset, view, decoder) {
         return {
             id: view.getBigUint64(0, true),
             date: view.getUint32(8, true),
@@ -39,7 +38,7 @@ class BinaryParser {
                 status: { promo: (status >> 7) & 1, inStock: (status >> 5) & 1 }
             });
         }
-        return { map, matchedIds };
+        return { feedMap: map, matchedIds };
     }
 }
 
@@ -47,17 +46,19 @@ self.onmessage = async (e) => {
     const { baseUrl, coreFile, metaFile, feedFile, query, storeId } = e.data;
     const decoder = new TextDecoder();
     try {
-        const feedRes = await fetch(baseUrl + feedFile);
+        const [feedRes, metaRes] = await Promise.all([
+            fetch(baseUrl + feedFile),
+            metaFile ? fetch(baseUrl + metaFile) : Promise.resolve(null)
+        ]);
         const feedBuf = await feedRes.arrayBuffer();
-        const { map: feedMap, matchedIds: storeMatchedIds } = BinaryParser.parseFeed(feedBuf, storeId ? parseInt(storeId) : null);
-
+        const { feedMap, matchedIds: storeMatchedIds } = BinaryParser.parseFeed(feedBuf, storeId ? parseInt(storeId) : null);
+        
         let allowedIds = storeId ? storeMatchedIds : null;
-        if (query && metaFile) {
-            const metaRes = await fetch(baseUrl + metaFile);
+        if (query && metaRes) {
             const metaBuf = await metaRes.arrayBuffer();
             const metaData = new Uint8Array(metaBuf);
             const metaView = new DataView(metaBuf);
-            allowedIds = new Set();
+            const searchIds = new Set();
             let hA = BinaryParser.murmur(query.toLowerCase(), 42), hB = BinaryParser.murmur(query.toLowerCase(), 99);
             let bits = [];
             for (let i = 0; i < 7; i++) bits.push((hA + i * hB) % 2048);
@@ -66,8 +67,9 @@ self.onmessage = async (e) => {
                 for (let b of bits) {
                     if (!(metaData[i + 8 + Math.floor(b / 8)] & (1 << (b % 8)))) { match = false; break; }
                 }
-                if (match) allowedIds.add(metaView.getBigUint64(i, true));
+                if (match) searchIds.add(metaView.getBigUint64(i, true));
             }
+            allowedIds = storeId ? new Set([...searchIds].filter(x => storeMatchedIds.has(x))) : searchIds;
         }
 
         const coreRes = await fetch(baseUrl + coreFile);
@@ -77,17 +79,16 @@ self.onmessage = async (e) => {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             let combined = new Uint8Array(leftover.length + value.length);
             combined.set(leftover);
             combined.set(value, leftover.length);
-
             let records = [];
             let offset = 0;
             while (offset + 442 <= combined.length) {
-                const id = new DataView(combined.buffer, combined.byteOffset + offset, 8).getBigUint64(0, true);
+                const view = new DataView(combined.buffer, combined.byteOffset + offset, 442);
+                const id = view.getBigUint64(0, true);
                 if (!allowedIds || allowedIds.has(id)) {
-                    records.push(BinaryParser.parseCoreRecord(combined, offset, decoder));
+                    records.push(BinaryParser.parseCoreRecord(combined, offset, view, decoder));
                 }
                 offset += 442;
             }
