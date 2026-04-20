@@ -159,10 +159,12 @@ async function startWidget() {
                 loader.style.display = 'none';
                 storeData.feed = e.data.feed;
                 storeData.core.push(...e.data.batch);
-                if (storeData.core.length <= WIDGET_CONFIG.BATCH_SIZE) {
-                    renderer.renderBatch(e.data.batch, WIDGET_CONFIG.DOMAIN, e.data.feed);
-                    currentIndex = storeData.core.length;
-                } else if (isFullyLoaded) {
+                if (currentIndex === 0) {
+                    const initialLimit = Math.min(WIDGET_CONFIG.BATCH_SIZE, storeData.core.length);
+                    renderer.renderBatch(storeData.core.slice(0, initialLimit), WIDGET_CONFIG.DOMAIN, e.data.feed);
+                    currentIndex = initialLimit;
+                }
+                if (isFullyLoaded || storeData.core.length > currentIndex) {
                     loadMoreBtn.style.display = 'block';
                 }
             } else if (e.data.type === 'DONE') {
@@ -190,9 +192,8 @@ async function startWidget() {
         });
 
         loadMoreBtn.onclick = renderNextBatch;
-
     } catch (err) {
-        document.getElementById(WIDGET_CONFIG.ROOT_ID).innerHTML = '<div class="error-msg">خطأ في الاتصال</div>';
+        console.error(err);
     }
 }
 document.addEventListener("DOMContentLoaded", startWidget);
