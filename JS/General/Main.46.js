@@ -109,6 +109,7 @@ const WIDGET_CONFIG = {
     DOMAIN: "https://www.iseekprice.com/",
     BASE_URL: "https://api.iseekprice.com/",
     PLACEHOLDER: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_6M_oCTDClXnX0p4KvvHzgjw7X2tBBFzkDp6b057jVwL4KPDL3tscGqe6dKNbLJVbmRDQXlnB3Wbcezf54eTD09j6vLsA7LBsXIEaFX6_Ztqx6e41nWilu1WV4rJjC5AThnbe_vOC-PYH1AMWv0WYgR-QxGp4njSptfwlmmTPBqLMRGzMt0dSElde/s600/%D8%AA%D9%88%D9%81%D9%8A%D8%B1.jpg",
+    INITIAL_SIZE: 12,
     BATCH_SIZE: 50
 };
 
@@ -125,7 +126,7 @@ async function startWidget() {
         const metaFile = `General/meta_${fileMap.meta}.bin`;
         const feedFile = fileMap.regions[country]?.feed ? `${country}/feed_${fileMap.regions[country].feed}.bin` : null;
 
-        if (!feedFile) throw new Error("Region not found");
+        if (!feedFile) throw new Error("Region missing");
 
         root.innerHTML = `
             <div id="product-posts" class="product-grid"></div>
@@ -145,13 +146,14 @@ async function startWidget() {
         const worker = new Worker(URL.createObjectURL(blob));
 
         const renderNextBatch = () => {
-            const limit = Math.min(currentIndex + WIDGET_CONFIG.BATCH_SIZE, storeData.core.length);
+            const size = currentIndex === 0 ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
+            const limit = Math.min(currentIndex + size, storeData.core.length);
             const batch = storeData.core.slice(currentIndex, limit);
             if (batch.length > 0) {
                 renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed);
                 currentIndex = limit;
             }
-            loadMoreBtn.style.display = (isFullyLoaded && currentIndex >= storeData.core.length) ? 'none' : (isFullyLoaded ? 'block' : 'none');
+            loadMoreBtn.style.display = (isFullyLoaded && currentIndex >= storeData.core.length) ? 'none' : (storeData.core.length > currentIndex ? 'block' : 'none');
         };
 
         worker.onmessage = (e) => {
@@ -159,12 +161,9 @@ async function startWidget() {
                 loader.style.display = 'none';
                 storeData.feed = e.data.feed;
                 storeData.core.push(...e.data.batch);
-                if (currentIndex === 0) {
-                    const initialLimit = Math.min(WIDGET_CONFIG.BATCH_SIZE, storeData.core.length);
-                    renderer.renderBatch(storeData.core.slice(0, initialLimit), WIDGET_CONFIG.DOMAIN, e.data.feed);
-                    currentIndex = initialLimit;
-                }
-                if (isFullyLoaded || storeData.core.length > currentIndex) {
+                if (currentIndex === 0 && storeData.core.length >= WIDGET_CONFIG.INITIAL_SIZE) {
+                    renderNextBatch();
+                } else if (isFullyLoaded) {
                     loadMoreBtn.style.display = 'block';
                 }
             } else if (e.data.type === 'DONE') {
@@ -172,8 +171,9 @@ async function startWidget() {
                 loader.style.display = 'none';
                 if (storeData.core.length === 0) {
                     grid.innerHTML = '<div class="no-results">لا توجد نتائج</div>';
-                } else if (currentIndex < storeData.core.length) {
-                    loadMoreBtn.style.display = 'block';
+                } else {
+                    if (currentIndex === 0) renderNextBatch();
+                    loadMoreBtn.style.display = currentIndex < storeData.core.length ? 'block' : 'none';
                 }
             } else if (e.data.type === 'ERROR') {
                 loader.style.display = 'none';
