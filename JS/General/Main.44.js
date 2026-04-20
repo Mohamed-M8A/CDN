@@ -137,18 +137,14 @@ async function startWidget() {
         const loader = document.getElementById('loader');
         const renderer = new Renderer('product-posts', WIDGET_CONFIG.PLACEHOLDER);
         
-        let currentIndex = 0;
         let storeData = { core: [], feed: new Map() };
+        let currentIndex = 0;
         let isFullyLoaded = false;
 
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
         const renderNextBatch = () => {
-            if (isFullyLoaded && storeData.core.length === 0 && currentIndex === 0) {
-                grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
-                return;
-            }
             const limit = Math.min(currentIndex + WIDGET_CONFIG.BATCH_SIZE, storeData.core.length);
             const batch = storeData.core.slice(currentIndex, limit);
             if (batch.length > 0) {
@@ -162,42 +158,41 @@ async function startWidget() {
             if (e.data.type === 'BATCH') {
                 loader.style.display = 'none';
                 storeData.feed = e.data.feed;
-                // هنا نضيف البيانات الجديدة للمخزن تدريجياً لضمان عدم حدوث فجوات
                 storeData.core.push(...e.data.batch);
-                renderer.renderBatch(e.data.batch, WIDGET_CONFIG.DOMAIN, e.data.feed);
-                currentIndex = storeData.core.length;
-            } else if (e.data.type === 'DONE') {
-                isFullyLoaded = true;
-                storeData.core = e.data.core; 
-                storeData.feed = e.data.feed;
-                loader.style.display = 'none';
-                if (currentIndex < storeData.core.length) {
+                if (storeData.core.length <= WIDGET_CONFIG.BATCH_SIZE) {
+                    renderer.renderBatch(e.data.batch, WIDGET_CONFIG.DOMAIN, e.data.feed);
+                    currentIndex = storeData.core.length;
+                } else if (isFullyLoaded) {
                     loadMoreBtn.style.display = 'block';
                 }
-                if (storeData.core.length === 0) renderNextBatch();
+            } else if (e.data.type === 'DONE') {
+                isFullyLoaded = true;
+                loader.style.display = 'none';
+                if (storeData.core.length === 0) {
+                    grid.innerHTML = '<div class="no-results">لا توجد نتائج</div>';
+                } else if (currentIndex < storeData.core.length) {
+                    loadMoreBtn.style.display = 'block';
+                }
             } else if (e.data.type === 'ERROR') {
                 loader.style.display = 'none';
                 grid.innerHTML = '<div class="error-msg">حدث خطأ أثناء تحميل البيانات</div>';
-                console.error("Worker Error:", e.data.error);
             }
         };
 
         const urlParams = new URLSearchParams(window.location.search);
-        const query = urlParams.get('query');
-        const storeId = urlParams.get('store');
-
-        loadMoreBtn.onclick = renderNextBatch;
         worker.postMessage({
             baseUrl: WIDGET_CONFIG.BASE_URL,
             coreFile: coreFile,
             metaFile: metaFile,
             feedFile: feedFile,
-            query: query,
-            storeId: storeId
+            query: urlParams.get('query'),
+            storeId: urlParams.get('store')
         });
+
+        loadMoreBtn.onclick = renderNextBatch;
+
     } catch (err) {
-        console.error(err);
+        document.getElementById(WIDGET_CONFIG.ROOT_ID).innerHTML = '<div class="error-msg">خطأ في الاتصال</div>';
     }
 }
-
 document.addEventListener("DOMContentLoaded", startWidget);
