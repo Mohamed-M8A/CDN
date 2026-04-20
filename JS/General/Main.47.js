@@ -126,7 +126,7 @@ async function startWidget() {
         const metaFile = `General/meta_${fileMap.meta}.bin`;
         const feedFile = fileMap.regions[country]?.feed ? `${country}/feed_${fileMap.regions[country].feed}.bin` : null;
 
-        if (!feedFile) throw new Error("Region missing");
+        if (!feedFile) throw new Error("Region not found");
 
         root.innerHTML = `
             <div id="product-posts" class="product-grid"></div>
@@ -141,19 +141,26 @@ async function startWidget() {
         let storeData = { core: [], feed: new Map() };
         let currentIndex = 0;
         let isFullyLoaded = false;
+        let initialRenderDone = false;
 
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
         const renderNextBatch = () => {
-            const size = currentIndex === 0 ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
+            const size = (currentIndex === 0) ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
             const limit = Math.min(currentIndex + size, storeData.core.length);
             const batch = storeData.core.slice(currentIndex, limit);
+            
             if (batch.length > 0) {
                 renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed);
                 currentIndex = limit;
             }
-            loadMoreBtn.style.display = (isFullyLoaded && currentIndex >= storeData.core.length) ? 'none' : (storeData.core.length > currentIndex ? 'block' : 'none');
+            
+            if (isFullyLoaded && currentIndex >= storeData.core.length) {
+                loadMoreBtn.style.display = 'none';
+            } else if (storeData.core.length > currentIndex) {
+                loadMoreBtn.style.display = 'block';
+            }
         };
 
         worker.onmessage = (e) => {
@@ -161,19 +168,19 @@ async function startWidget() {
                 loader.style.display = 'none';
                 storeData.feed = e.data.feed;
                 storeData.core.push(...e.data.batch);
-                if (currentIndex === 0 && storeData.core.length >= WIDGET_CONFIG.INITIAL_SIZE) {
+
+                if (!initialRenderDone && storeData.core.length >= WIDGET_CONFIG.INITIAL_SIZE) {
                     renderNextBatch();
-                } else if (isFullyLoaded) {
-                    loadMoreBtn.style.display = 'block';
+                    initialRenderDone = true;
                 }
             } else if (e.data.type === 'DONE') {
                 isFullyLoaded = true;
                 loader.style.display = 'none';
                 if (storeData.core.length === 0) {
-                    grid.innerHTML = '<div class="no-results">لا توجد نتائج</div>';
+                    grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
                 } else {
-                    if (currentIndex === 0) renderNextBatch();
-                    loadMoreBtn.style.display = currentIndex < storeData.core.length ? 'block' : 'none';
+                    if (!initialRenderDone) renderNextBatch();
+                    if (currentIndex < storeData.core.length) loadMoreBtn.style.display = 'block';
                 }
             } else if (e.data.type === 'ERROR') {
                 loader.style.display = 'none';
