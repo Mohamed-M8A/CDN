@@ -25,6 +25,20 @@ class Renderer {
         }, { rootMargin: "150px" });
     }
 
+    showSkeletons(count) {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            html += `
+                <div class="skeleton-card">
+                    <div class="skeleton skeleton-img"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width:60%"></div>
+                    <div class="skeleton skeleton-price"></div>
+                </div>`;
+        }
+        this.container.innerHTML = html;
+    }
+
     formatPriceDisplay(val) {
         return parseFloat(val).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
@@ -51,8 +65,7 @@ class Renderer {
             const price = this.formatPriceDisplay(feed.price);
             const original = this.formatPriceDisplay(feed.original);
             const deliveryTime = (feed.delivery.min === feed.delivery.max || !feed.delivery.max) 
-                ? `${feed.delivery.min} يوم` 
-                : `${feed.delivery.max}-${feed.delivery.min} يوم`;
+                ? `${feed.delivery.min} يوم` : `${feed.delivery.max}-${feed.delivery.min} يوم`;
 
             if (feed.status.inStock === 0) {
                 badgeHTML = '<div class="discount-badge out-of-stock">نفذت</div>';
@@ -69,20 +82,16 @@ class Renderer {
                     ${feed.original > feed.price ? `<span class="original-price">${original} ${symbol}</span>` : ''}
                 </div>
                 <div class="product-meta-details">
-                    <div class="meta-item">★ ${feed.score}</div>
-                    <div class="meta-item">${feed.orders.toLocaleString()} تم بيع</div>
-                    <div class="meta-item">${deliveryTime}</div>
+                    <div class="meta-item"><span>⭐</span> ${feed.score}</div>
+                    <div class="meta-item">${feed.orders.toLocaleString()} مبيعات</div>
+                    <div class="meta-item">🚚 ${deliveryTime}</div>
                 </div>`;
         }
         
         card.innerHTML = `
-            <span class="UID" style="display:none">${product.id}</span>
             <div class="image-container">
                 ${badgeHTML}
                 <img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="${imageUrl}">
-                <div class="external-cart-button">
-                    <svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg>
-                </div>
             </div>
             <div class="post-content">
                 <h3 class="post-title">${product.title}</h3>
@@ -94,7 +103,8 @@ class Renderer {
         return card;
     }
 
-    renderBatch(products, domain, feedMap) {
+    renderBatch(products, domain, feedMap, clear) {
+        if (clear) this.container.innerHTML = '';
         const fragment = document.createDocumentFragment();
         products.forEach(p => {
             const card = this.createCard(p, domain, feedMap.get(p.id));
@@ -108,7 +118,7 @@ const WIDGET_CONFIG = {
     ROOT_ID: 'souq-widget-root',
     DOMAIN: "https://www.iseekprice.com/",
     BASE_URL: "https://api.iseekprice.com/",
-    PLACEHOLDER: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_6M_oCTDClXnX0p4KvvHzgjw7X2tBBFzkDp6b057jVwL4KPDL3tscGqe6dKNbLJVbmRDQXlnB3Wbcezf54eTD09j6vLsA7LBsXIEaFX6_Ztqx6e41nWilu1WV4rJjC5AThnbe_vOC-PYH1AMWv0WYgR-QxGp4njSptfwlmmTPBqLMRGzMt0dSElde/s600/%D8%AA%D9%88%D9%81%D9%8A%D8%B1.jpg",
+    PLACEHOLDER: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
     INITIAL_SIZE: 12,
     BATCH_SIZE: 50
 };
@@ -117,83 +127,64 @@ async function startWidget() {
     const root = document.getElementById(WIDGET_CONFIG.ROOT_ID);
     if (!root) return;
 
+    root.innerHTML = `
+        <div id="product-posts" class="product-grid"></div>
+        <button id="load-more" class="load-more-btn" style="display:none;">عرض المزيد</button>`;
+    
+    const grid = document.getElementById('product-posts');
+    const loadMoreBtn = document.getElementById('load-more');
+    const renderer = new Renderer('product-posts', WIDGET_CONFIG.PLACEHOLDER);
+    
+    renderer.showSkeletons(WIDGET_CONFIG.INITIAL_SIZE);
+
     try {
         const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
         const fileMap = await mapRes.json();
         const country = localStorage.getItem("Cntry") || "SA";
 
-        const coreFile = `General/core_${fileMap.core}.bin`;
-        const metaFile = `General/meta_${fileMap.meta}.bin`;
-        const feedFile = fileMap.regions[country]?.feed ? `${country}/feed_${fileMap.regions[country].feed}.bin` : null;
-
-        if (!feedFile) throw new Error("Region not found");
-
-        root.innerHTML = `
-            <div id="product-posts" class="product-grid"></div>
-            <div id="loader" class="loader-container"><div class="spinner"></div></div>
-            <button id="load-more" class="load-more-btn" style="display:none;">عرض المزيد</button>`;
-        
-        const grid = document.getElementById('product-posts');
-        const loadMoreBtn = document.getElementById('load-more');
-        const loader = document.getElementById('loader');
-        const renderer = new Renderer('product-posts', WIDGET_CONFIG.PLACEHOLDER);
-        
         let storeData = { core: [], feed: new Map() };
         let currentIndex = 0;
         let isFullyLoaded = false;
-        let initialRenderDone = false;
+        let firstBatchDone = false;
 
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
         const renderNextBatch = () => {
-            const size = (currentIndex === 0) ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
-            const limit = Math.min(currentIndex + size, storeData.core.length);
+            const limit = Math.min(currentIndex + WIDGET_CONFIG.BATCH_SIZE, storeData.core.length);
             const batch = storeData.core.slice(currentIndex, limit);
-            
             if (batch.length > 0) {
-                renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed);
+                renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed, false);
                 currentIndex = limit;
             }
-            
-            if (isFullyLoaded && currentIndex >= storeData.core.length) {
-                loadMoreBtn.style.display = 'none';
-            } else if (storeData.core.length > currentIndex) {
-                loadMoreBtn.style.display = 'block';
-            }
+            loadMoreBtn.style.display = (isFullyLoaded && currentIndex >= storeData.core.length) ? 'none' : 'block';
         };
 
         worker.onmessage = (e) => {
             if (e.data.type === 'BATCH') {
-                loader.style.display = 'none';
                 storeData.feed = e.data.feed;
                 storeData.core.push(...e.data.batch);
 
-                if (!initialRenderDone && storeData.core.length >= WIDGET_CONFIG.INITIAL_SIZE) {
-                    renderNextBatch();
-                    initialRenderDone = true;
+                if (!firstBatchDone && storeData.core.length >= WIDGET_CONFIG.INITIAL_SIZE) {
+                    renderer.renderBatch(storeData.core.slice(0, WIDGET_CONFIG.INITIAL_SIZE), WIDGET_CONFIG.DOMAIN, e.data.feed, true);
+                    currentIndex = WIDGET_CONFIG.INITIAL_SIZE;
+                    firstBatchDone = true;
+                    loadMoreBtn.style.display = 'block';
                 }
             } else if (e.data.type === 'DONE') {
                 isFullyLoaded = true;
-                loader.style.display = 'none';
-                if (storeData.core.length === 0) {
-                    grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
-                } else {
-                    if (!initialRenderDone) renderNextBatch();
-                    if (currentIndex < storeData.core.length) loadMoreBtn.style.display = 'block';
-                }
+                if (storeData.core.length === 0) grid.innerHTML = '<div class="no-results">لا توجد نتائج</div>';
             } else if (e.data.type === 'ERROR') {
-                loader.style.display = 'none';
-                grid.innerHTML = '<div class="error-msg">حدث خطأ أثناء تحميل البيانات</div>';
+                grid.innerHTML = '<div class="error-msg">فشل تحميل البيانات</div>';
             }
         };
 
         const urlParams = new URLSearchParams(window.location.search);
         worker.postMessage({
             baseUrl: WIDGET_CONFIG.BASE_URL,
-            coreFile: coreFile,
-            metaFile: metaFile,
-            feedFile: feedFile,
+            coreFile: `General/core_${fileMap.core}.bin`,
+            metaFile: `General/meta_${fileMap.meta}.bin`,
+            feedFile: `${country}/feed_${fileMap.regions[country].feed}.bin`,
             query: urlParams.get('query'),
             storeId: urlParams.get('store')
         });
