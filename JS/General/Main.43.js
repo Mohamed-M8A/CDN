@@ -109,7 +109,6 @@ const WIDGET_CONFIG = {
     DOMAIN: "https://www.iseekprice.com/",
     BASE_URL: "https://api.iseekprice.com/",
     PLACEHOLDER: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_6M_oCTDClXnX0p4KvvHzgjw7X2tBBFzkDp6b057jVwL4KPDL3tscGqe6dKNbLJVbmRDQXlnB3Wbcezf54eTD09j6vLsA7LBsXIEaFX6_Ztqx6e41nWilu1WV4rJjC5AThnbe_vOC-PYH1AMWv0WYgR-QxGp4njSptfwlmmTPBqLMRGzMt0dSElde/s600/%D8%AA%D9%88%D9%81%D9%8A%D8%B1.jpg",
-    INITIAL_SIZE: 12,
     BATCH_SIZE: 50
 };
 
@@ -119,7 +118,6 @@ async function startWidget() {
 
     try {
         const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
-        if (!mapRes.ok) throw new Error("Failed to load map.json");
         const fileMap = await mapRes.json();
         const country = localStorage.getItem("Cntry") || "SA";
 
@@ -127,7 +125,7 @@ async function startWidget() {
         const metaFile = `General/meta_${fileMap.meta}.bin`;
         const feedFile = fileMap.regions[country]?.feed ? `${country}/feed_${fileMap.regions[country].feed}.bin` : null;
 
-        if (!feedFile) throw new Error("Region not found in map");
+        if (!feedFile) throw new Error("Region not found");
 
         root.innerHTML = `
             <div id="product-posts" class="product-grid"></div>
@@ -141,12 +139,13 @@ async function startWidget() {
         
         let currentIndex = 0;
         let storeData = { core: [], feed: new Map() };
+        let isFullyLoaded = false;
 
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
         const renderNextBatch = () => {
-            if (storeData.core.length === 0 && currentIndex === 0) {
+            if (isFullyLoaded && storeData.core.length === 0 && currentIndex === 0) {
                 grid.innerHTML = '<div class="no-results">لا توجد نتائج تطابق بحثك</div>';
                 return;
             }
@@ -156,25 +155,30 @@ async function startWidget() {
                 renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed);
                 currentIndex = limit;
             }
-            loadMoreBtn.style.display = currentIndex >= storeData.core.length ? 'none' : 'block';
+            loadMoreBtn.style.display = (isFullyLoaded && currentIndex >= storeData.core.length) ? 'none' : (isFullyLoaded ? 'block' : 'none');
         };
 
         worker.onmessage = (e) => {
             if (e.data.type === 'BATCH') {
-                if (currentIndex === 0) loader.style.display = 'none';
+                loader.style.display = 'none';
                 storeData.feed = e.data.feed;
+                // هنا نضيف البيانات الجديدة للمخزن تدريجياً لضمان عدم حدوث فجوات
+                storeData.core.push(...e.data.batch);
                 renderer.renderBatch(e.data.batch, WIDGET_CONFIG.DOMAIN, e.data.feed);
-                currentIndex += e.data.batch.length;
+                currentIndex = storeData.core.length;
             } else if (e.data.type === 'DONE') {
-                storeData.core = e.data.core;
+                isFullyLoaded = true;
+                storeData.core = e.data.core; 
+                storeData.feed = e.data.feed;
                 loader.style.display = 'none';
                 if (currentIndex < storeData.core.length) {
                     loadMoreBtn.style.display = 'block';
                 }
+                if (storeData.core.length === 0) renderNextBatch();
             } else if (e.data.type === 'ERROR') {
                 loader.style.display = 'none';
-                console.error("Worker Error details:", e.data.error);
                 grid.innerHTML = '<div class="error-msg">حدث خطأ أثناء تحميل البيانات</div>';
+                console.error("Worker Error:", e.data.error);
             }
         };
 
@@ -192,7 +196,7 @@ async function startWidget() {
             storeId: storeId
         });
     } catch (err) {
-        console.error("Widget Startup Error:", err);
+        console.error(err);
     }
 }
 
