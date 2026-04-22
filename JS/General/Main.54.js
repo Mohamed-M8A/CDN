@@ -1,7 +1,94 @@
+const MAP_CONFIG = {
+    BASE_URL: "https://api.iseekprice.com/",
+    DOMAIN: "https://www.iseekprice.com/",
+    IMG_BASE_URL: "https://ae-pic-a1.aliexpress-media.com/kf/",
+    PLACEHOLDER: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_6M_oCTDClXnX0p4KvvHzgjw7X2tBBFzkDp6b057jVwL4KPDL3tscGqe6dKNbLJVbmRDQXlnB3Wbcezf54eTD09j6vLsA7LBsXIEaFX6_Ztqx6e41nWilu1WV4rJjC5AThnbe_vOC-PYH1AMWv0WYgR-QxGp4njSptfwlmmTPBqLMRGzMt0dSElde/s600/%D8%AA%D9%88%D9%81%D9%8A%D8%B1.jpg",
+    REGIONS: {
+        "SA": { symbol: "ر.س" },
+        "AE": { symbol: "د.إ" },
+        "OM": { symbol: "ر.ع" },
+        "MA": { symbol: "د.م" },
+        "DZ": { symbol: "د.ج" },
+        "TN": { symbol: "د.ت" }
+    }
+};
+
+const MAP_ENGINE = {
+    getRegion() {
+        const code = (localStorage.getItem("Cntry") || "SA").toUpperCase();
+        return MAP_CONFIG.REGIONS[code] || MAP_CONFIG.REGIONS["SA"];
+    },
+    toBase64URL(bytes) {
+        let lastIndex = bytes.length - 1;
+        while (lastIndex >= 0 && bytes[lastIndex] === 0) lastIndex--;
+        const cleanBytes = bytes.slice(0, lastIndex + 1);
+        return btoa(String.fromCharCode(...cleanBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+};
+
+class Renderer {
+    constructor(containerId, placeholder) {
+        this.container = document.getElementById(containerId);
+        this.placeholder = placeholder;
+        this.currencyConfig = MAP_ENGINE.getRegion();
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.removeAttribute('data-src');
+                    this.observer.unobserve(img);
+                }
+            });
+        }, { rootMargin: "150px" });
+    }
+
+    formatPriceDisplay(val) {
+        return parseFloat(val).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    createCard(product, domain, feed) {
+        if (!product) return null;
+        const card = document.createElement("a");
+        card.href = domain + product.path;
+        card.className = "post-card title-link";
+        const symbol = this.currencyConfig.symbol;
+        const slug = MAP_ENGINE.toBase64URL(product.imgSlug);
+        const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w220-h220/p.webp`;
+        let badgeHTML = '', metaHTML = '';
+        if (feed) {
+            const price = this.formatPriceDisplay(feed.priceDiscounted);
+            const original = this.formatPriceDisplay(feed.priceOriginal);
+            const deliveryTime = (feed.minDelivery === feed.maxDelivery || !feed.maxDelivery) ? `${feed.minDelivery} يوم` : `${feed.maxDelivery}-${feed.minDelivery} يوم`;
+            if (feed.inStock === 0) {
+                badgeHTML = '<div class="discount-badge out-of-stock">نفذت</div>';
+            } else if (feed.hasPromo) {
+                badgeHTML = '<div class="discount-badge promo">عرض خاص</div>';
+            } else if (feed.priceOriginal > feed.priceDiscounted) {
+                const discount = Math.round(((feed.priceOriginal - feed.priceDiscounted) / feed.priceOriginal) * 100);
+                badgeHTML = `<div class="discount-badge">-${discount}%</div>`;
+            }
+            metaHTML = `<div class="price-display"><span class="discounted-price">${price} ${symbol}</span>${feed.priceOriginal > feed.priceDiscounted ? `<span class="original-price">${original} ${symbol}</span>` : ''}</div><div class="product-meta-details"><div class="meta-item">★ ${feed.score}</div><div class="meta-item">${feed.orders.toLocaleString()} تم بيع</div><div class="meta-item">${deliveryTime}</div></div>`;
+        }
+        card.innerHTML = `<span class="UID" style="display:none">${product.id}</span><div class="image-container">${badgeHTML}<img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="${imageUrl}"><div class="external-cart-button"><svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg></div></div><div class="post-content"><h3 class="post-title">${product.title}</h3>${metaHTML}</div>`;
+        const img = card.querySelector('.post-image');
+        if (img) this.observer.observe(img);
+        return card;
+    }
+
+    renderBatch(products, domain, feedMap) {
+        const fragment = document.createDocumentFragment();
+        products.forEach(p => {
+            const card = this.createCard(p, domain, feedMap.get(p.id));
+            if (card) fragment.appendChild(card);
+        });
+        this.container.appendChild(fragment);
+    }
+}
 
 const workerCode = `
 self.onmessage = async (e) => {
-    const { config, hashes, country, mainUID, storeId, query } = e.data;
+    const { config, hashes, country, mainUID } = e.data;
     const decoder = new TextDecoder();
 
     async function fetchRange(url, start, length) {
@@ -118,12 +205,17 @@ async function startEngine() {
     try {
         const res = await fetch(MAP_CONFIG.BASE_URL + "General/map.json?v=" + Date.now());
         const fileMap = await res.json();
-        
+        const hashes = fileMap.regions[country];
+        if (!hashes) return;
+
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
-        let renderer = root ? new Renderer("product-posts", MAP_CONFIG.PLACEHOLDER) : null;
-        let storeData = { core: [], feed: new Map() };
+        let renderer = null;
+        if (root) {
+            root.innerHTML = `<div id="product-posts" class="product-grid"></div><div id="loader" class="loader-container"><div class="spinner"></div></div>`;
+            renderer = new Renderer("product-posts", MAP_CONFIG.PLACEHOLDER);
+        }
 
         worker.onmessage = (e) => {
             if (e.data.type === 'PRODUCT_DETAILS') {
@@ -135,9 +227,9 @@ async function startEngine() {
             }
             
             if (e.data.type === 'BATCH' && renderer) {
-                storeData.feed = e.data.feed;
                 renderer.renderBatch(e.data.batch, MAP_CONFIG.DOMAIN, e.data.feed);
-                document.getElementById('loader').style.display = 'none';
+                const loader = document.getElementById('loader');
+                if (loader) loader.style.display = 'none';
             }
         };
 
@@ -146,16 +238,30 @@ async function startEngine() {
             country: country,
             hashes: {
                 core: fileMap.core,
-                feed: fileMap.regions[country].feed,
-                links: fileMap.regions[country].links,
-                sku: fileMap.regions[country].sku,
-                promo: fileMap.regions[country].promo,
-                fluctuation: fileMap.regions[country].fluctuation
+                feed: hashes.feed,
+                links: hashes.links,
+                sku: hashes.sku,
+                promo: hashes.promo,
+                fluctuation: hashes.fluctuation
             },
             mainUID: mainUIDEl ? mainUIDEl.textContent.trim() : null
         });
 
-    } catch (e) { console.error("Engine Start Failed", e); }
+    } catch (e) { console.error(e); }
 }
+
+window.updateSKUPrice = function(item) {
+    if (typeof window.injectData === "function") {
+        window.injectData({
+            priceOriginal: item.priceOriginal,
+            priceDiscounted: item.priceDiscounted,
+            shippingFee: item.shippingFee,
+            minDelivery: item.minDelivery,
+            maxDelivery: item.maxDelivery
+        });
+    }
+    const v = document.querySelector(".variant-value");
+    if (v) v.textContent = item.props;
+};
 
 document.addEventListener("DOMContentLoaded", startEngine);
