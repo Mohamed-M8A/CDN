@@ -13,24 +13,12 @@ const MAP_CONFIG = {
     }
 };
 
-const MAP_ENGINE = {
-    getRegion() {
-        const code = (localStorage.getItem("Cntry") || "SA").toUpperCase();
-        return MAP_CONFIG.REGIONS[code] || MAP_CONFIG.REGIONS["SA"];
-    },
-    toBase64URL(bytes) {
-        let lastIndex = bytes.length - 1;
-        while (lastIndex >= 0 && bytes[lastIndex] === 0) lastIndex--;
-        const cleanBytes = bytes.slice(0, lastIndex + 1);
-        return btoa(String.fromCharCode(...cleanBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    }
-};
-
 class Renderer {
     constructor(containerId, placeholder) {
         this.container = document.getElementById(containerId);
         this.placeholder = placeholder;
-        this.currencyConfig = MAP_ENGINE.getRegion();
+        const activeCntry = localStorage.getItem("Cntry") || "SA";
+        this.currencyConfig = MAP_CONFIG.REGIONS[activeCntry] || MAP_CONFIG.REGIONS["SA"];
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -47,13 +35,20 @@ class Renderer {
         return parseFloat(val).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
+    static toBase64URL(bytes) {
+        let lastIndex = bytes.length - 1;
+        while (lastIndex >= 0 && bytes[lastIndex] === 0) lastIndex--;
+        const cleanBytes = bytes.slice(0, lastIndex + 1);
+        return btoa(String.fromCharCode(...cleanBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
     createCard(product, domain, feed) {
         if (!product) return null;
         const card = document.createElement("a");
         card.href = domain + product.path;
         card.className = "post-card title-link";
         const symbol = this.currencyConfig.symbol;
-        const slug = MAP_ENGINE.toBase64URL(product.imgSlug);
+        const slug = Renderer.toBase64URL(product.imgSlug);
         const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w220-h220/p.webp`;
         let badgeHTML = '', metaHTML = '';
         if (feed) {
@@ -88,7 +83,7 @@ class Renderer {
 
 const workerCode = `
 self.onmessage = async (e) => {
-    const { config, hashes, country, mainUID } = e.data;
+    const { config, hashes, country, mainUID, storeId, query } = e.data;
     const decoder = new TextDecoder();
 
     async function fetchRange(url, start, length) {
@@ -205,17 +200,12 @@ async function startEngine() {
     try {
         const res = await fetch(MAP_CONFIG.BASE_URL + "General/map.json?v=" + Date.now());
         const fileMap = await res.json();
-        const hashes = fileMap.regions[country];
-        if (!hashes) return;
-
+        
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
-        let renderer = null;
-        if (root) {
-            root.innerHTML = `<div id="product-posts" class="product-grid"></div><div id="loader" class="loader-container"><div class="spinner"></div></div>`;
-            renderer = new Renderer("product-posts", MAP_CONFIG.PLACEHOLDER);
-        }
+        let renderer = root ? new Renderer("product-posts", MAP_CONFIG.PLACEHOLDER) : null;
+        let storeData = { core: [], feed: new Map() };
 
         worker.onmessage = (e) => {
             if (e.data.type === 'PRODUCT_DETAILS') {
@@ -227,23 +217,27 @@ async function startEngine() {
             }
             
             if (e.data.type === 'BATCH' && renderer) {
+                storeData.feed = e.data.feed;
                 renderer.renderBatch(e.data.batch, MAP_CONFIG.DOMAIN, e.data.feed);
                 const loader = document.getElementById('loader');
                 if (loader) loader.style.display = 'none';
             }
         };
 
+        const urlParams = new URLSearchParams(window.location.search);
         worker.postMessage({
             config: MAP_CONFIG,
             country: country,
             hashes: {
                 core: fileMap.core,
-                feed: hashes.feed,
-                links: hashes.links,
-                sku: hashes.sku,
-                promo: hashes.promo,
-                fluctuation: hashes.fluctuation
+                feed: fileMap.regions[country].feed,
+                links: fileMap.regions[country].links,
+                sku: fileMap.regions[country].sku,
+                promo: fileMap.regions[country].promo,
+                fluctuation: fileMap.regions[country].fluctuation
             },
+            query: urlParams.get('query'),
+            storeId: urlParams.get('store'),
             mainUID: mainUIDEl ? mainUIDEl.textContent.trim() : null
         });
 
@@ -251,7 +245,7 @@ async function startEngine() {
 }
 
 window.updateSKUPrice = function(item) {
-    if (typeof window.injectData === "function") {
+    if (window.injectData) {
         window.injectData({
             priceOriginal: item.priceOriginal,
             priceDiscounted: item.priceDiscounted,
