@@ -120,7 +120,7 @@
                         minDelivery: view.getUint8(offset + 12),
                         maxDelivery: view.getUint8(offset + 13),
                         image: IMG_BASE_URL + imgSlug + (imgSlug.includes('.') ? "" : ".jpg"),
-                        props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 96, 96)).replace(/\0/g, '').trim())
+                        props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 54, 96)).replace(/\0/g, '').trim())
                     });
                 }
                 if (typeof window.renderSKUs === "function") window.renderSKUs(skuList);
