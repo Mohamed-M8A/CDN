@@ -86,7 +86,7 @@ const WIDGET_CONFIG = {
 
 async function startWidget() {
     const root = document.getElementById(WIDGET_CONFIG.ROOT_ID);
-    const mainUIDEl = document.querySelector(".UID");
+    const mainUIDEl = document.querySelector("#post-body .UID") || document.querySelector("article .UID");
     if (!root && !mainUIDEl) return;
 
     try {
@@ -94,13 +94,22 @@ async function startWidget() {
         const fileMap = await mapRes.json();
         const country = localStorage.getItem("Cntry") || "SA";
         const regionHashes = fileMap.regions[country];
-
         if (!regionHashes) return;
 
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
         /* --- PRODUCT PAGE & WIDGET LOGIC SEPARATOR --- */
+
+        worker.addEventListener('message', (e) => {
+            if (e.data.type === 'PRODUCT_DETAILS') {
+                const d = e.data.details;
+                if (typeof window.injectData === "function") window.injectData(d.initial);
+                if (d.skuList && typeof window.renderSKUs === "function") window.renderSKUs(d.skuList);
+                if (d.promo && typeof window.injectPromo === "function") window.injectPromo(d.promo);
+                if (d.chartBuffer && typeof window.renderBinaryChart === "function") window.renderBinaryChart(d.chartBuffer);
+            }
+        });
 
         if (root) {
             root.innerHTML = `<div id="product-posts" class="product-grid"></div><div id="loader" class="loader-container"><div class="spinner"></div></div><button id="load-more" class="load-more-btn" style="display:none;">عرض المزيد</button>`;
@@ -133,16 +142,6 @@ async function startWidget() {
             });
             loadMoreBtn.onclick = renderNextBatch;
         }
-
-        worker.addEventListener('message', (e) => {
-            if (e.data.type === 'PRODUCT_DETAILS') {
-                const d = e.data.details;
-                if (typeof window.injectData === "function") window.injectData(d.initial);
-                if (d.skuList && typeof window.renderSKUs === "function") window.renderSKUs(d.skuList);
-                if (d.promo && typeof window.injectPromo === "function") window.injectPromo(d.promo);
-                if (d.chartBuffer && typeof window.renderBinaryChart === "function") window.renderBinaryChart(d.chartBuffer);
-            }
-        });
 
         const urlParams = new URLSearchParams(window.location.search);
         worker.postMessage({
