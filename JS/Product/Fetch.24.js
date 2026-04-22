@@ -105,13 +105,13 @@
             } else if (type === "SKU") {
                 const skuList = [];
                 for (let s = 0; s < 30; s++) {
-                    const offset = 8 + (s * 150);
-                    if (offset + 150 > buffer.byteLength) break;
+                    const offset = 8 + (s * 182);
+                    if (offset + 182 > buffer.byteLength) break;
                     const pDisc = view.getUint32(offset + 4, true) / 100;
                     if (pDisc === 0) continue;
 
                     const imgSlug = decoder.decode(new Uint8Array(buffer, offset + 14, 40)).replace(/\0/g, '').trim();
-                    const rawProps = decoder.decode(new Uint8Array(buffer, offset + 54, 96)).replace(/\0/g, '').trim();
+                    const rawProps = decoder.decode(new Uint8Array(buffer, offset + 54, 128)).replace(/\0/g, '').trim();
 
                     skuList.push({
                         skuIdx: s,
