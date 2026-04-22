@@ -1,0 +1,179 @@
+const COUNTRY_MAP = {
+    "SA": { symbol: "ر.س" },
+    "AE": { symbol: "د.إ" },
+    "OM": { symbol: "ر.ع" },
+    "MA": { symbol: "د.م" },
+    "DZ": { symbol: "د.ج" },
+    "TN": { symbol: "د.ت" }
+};
+
+class Renderer {
+    constructor(containerId, placeholder) {
+        this.container = document.getElementById(containerId);
+        this.placeholder = placeholder;
+        const activeCntry = localStorage.getItem("Cntry") || "SA";
+        this.currencyConfig = COUNTRY_MAP[activeCntry] || COUNTRY_MAP["SA"];
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.removeAttribute('data-src');
+                    this.observer.unobserve(img);
+                }
+            });
+        }, { rootMargin: "150px" });
+    }
+
+    formatPriceDisplay(val) {
+        return parseFloat(val).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    static toBase64URL(bytes) {
+        let lastIndex = bytes.length - 1;
+        while (lastIndex >= 0 && bytes[lastIndex] === 0) lastIndex--;
+        const cleanBytes = bytes.slice(0, lastIndex + 1);
+        return btoa(String.fromCharCode(...cleanBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    createCard(product, domain, feed) {
+        if (!product) return null;
+        const card = document.createElement("a");
+        card.href = domain + product.path;
+        card.className = "post-card title-link";
+        const symbol = this.currencyConfig.symbol;
+        const slug = Renderer.toBase64URL(product.imgSlug);
+        const imageUrl = `https://blogger.googleusercontent.com/img/b/R29vZ2xl/${slug}/w220-h220/p.webp`;
+        let badgeHTML = '', metaHTML = '';
+        if (feed) {
+            const price = this.formatPriceDisplay(feed.price);
+            const original = this.formatPriceDisplay(feed.original);
+            const deliveryTime = (feed.delivery.min === feed.delivery.max || !feed.delivery.max) ? `${feed.delivery.min} يوم` : `${feed.delivery.max}-${feed.delivery.min} يوم`;
+            if (feed.status.inStock === 0) {
+                badgeHTML = '<div class="discount-badge out-of-stock">نفذت</div>';
+            } else if (feed.status.promo === 1) {
+                badgeHTML = '<div class="discount-badge promo">عرض خاص</div>';
+            } else if (feed.original > feed.price) {
+                const discount = Math.round(((feed.original - feed.price) / feed.original) * 100);
+                badgeHTML = `<div class="discount-badge">-${discount}%</div>`;
+            }
+            metaHTML = `<div class="price-display"><span class="discounted-price">${price} ${symbol}</span>${feed.original > feed.price ? `<span class="original-price">${original} ${symbol}</span>` : ''}</div><div class="product-meta-details"><div class="meta-item">★ ${feed.score}</div><div class="meta-item">${feed.orders.toLocaleString()} تم بيع</div><div class="meta-item">${deliveryTime}</div></div>`;
+        }
+        card.innerHTML = `<span class="UID" style="display:none">${product.id}</span><div class="image-container">${badgeHTML}<img class="post-image" alt="${product.title}" src="${this.placeholder}" data-src="${imageUrl}"><div class="external-cart-button"><svg style="width:20px;height:20px;"><use xlink:href="#i-cart"></use></svg></div></div><div class="post-content"><h3 class="post-title">${product.title}</h3>${metaHTML}</div>`;
+        const img = card.querySelector('.post-image');
+        if (img) this.observer.observe(img);
+        return card;
+    }
+
+    renderBatch(products, domain, feedMap) {
+        const fragment = document.createDocumentFragment();
+        products.forEach(p => {
+            const card = this.createCard(p, domain, feedMap.get(p.id));
+            if (card) fragment.appendChild(card);
+        });
+        this.container.appendChild(fragment);
+    }
+}
+
+const WIDGET_CONFIG = {
+    ROOT_ID: 'souq-widget-root',
+    DOMAIN: "https://www.iseekprice.com/",
+    BASE_URL: "https://api.iseekprice.com/",
+    PLACEHOLDER: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_6M_oCTDClXnX0p4KvvHzgjw7X2tBBFzkDp6b057jVwL4KPDL3tscGqe6dKNbLJVbmRDQXlnB3Wbcezf54eTD09j6vLsA7LBsXIEaFX6_Ztqx6e41nWilu1WV4rJjC5AThnbe_vOC-PYH1AMWv0WYgR-QxGp4njSptfwlmmTPBqLMRGzMt0dSElde/s600/%D8%AA%D9%88%D9%81%D9%8A%D8%B1.jpg",
+    INITIAL_SIZE: 12,
+    BATCH_SIZE: 50
+};
+
+async function startWidget() {
+    const root = document.getElementById(WIDGET_CONFIG.ROOT_ID);
+    const mainUIDEl = document.querySelector(".UID");
+    if (!root && !mainUIDEl) return;
+
+    try {
+        const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
+        const fileMap = await mapRes.json();
+        const country = localStorage.getItem("Cntry") || "SA";
+        const regionHashes = fileMap.regions[country];
+
+        if (!regionHashes) return;
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+
+        /* --- PRODUCT PAGE & WIDGET LOGIC SEPARATOR --- */
+
+        if (root) {
+            root.innerHTML = `<div id="product-posts" class="product-grid"></div><div id="loader" class="loader-container"><div class="spinner"></div></div><button id="load-more" class="load-more-btn" style="display:none;">عرض المزيد</button>`;
+            const grid = document.getElementById('product-posts');
+            const loadMoreBtn = document.getElementById('load-more');
+            const loader = document.getElementById('loader');
+            const renderer = new Renderer('product-posts', WIDGET_CONFIG.PLACEHOLDER);
+            let storeData = { core: [], feed: new Map() }, currentIndex = 0, isFullyLoaded = false, initialRenderDone = false;
+
+            const renderNextBatch = () => {
+                const size = (currentIndex === 0) ? WIDGET_CONFIG.INITIAL_SIZE : WIDGET_CONFIG.BATCH_SIZE;
+                const limit = Math.min(currentIndex + size, storeData.core.length);
+                const batch = storeData.core.slice(currentIndex, limit);
+                if (batch.length > 0) { renderer.renderBatch(batch, WIDGET_CONFIG.DOMAIN, storeData.feed); currentIndex = limit; }
+                if (isFullyLoaded && currentIndex >= storeData.core.length) loadMoreBtn.style.display = 'none';
+                else if (storeData.core.length > currentIndex) loadMoreBtn.style.display = 'block';
+            };
+
+            worker.addEventListener('message', (e) => {
+                if (e.data.type === 'BATCH') {
+                    loader.style.display = 'none';
+                    storeData.feed = e.data.feed;
+                    storeData.core.push(...e.data.batch);
+                    if (!initialRenderDone && storeData.core.length >= WIDGET_CONFIG.INITIAL_SIZE) { renderNextBatch(); initialRenderDone = true; }
+                } else if (e.data.type === 'DONE') {
+                    isFullyLoaded = true; loader.style.display = 'none';
+                    if (storeData.core.length === 0) grid.innerHTML = '<div class="no-results">لا توجد نتائج</div>';
+                    else { if (!initialRenderDone) renderNextBatch(); if (currentIndex < storeData.core.length) loadMoreBtn.style.display = 'block'; }
+                }
+            });
+            loadMoreBtn.onclick = renderNextBatch;
+        }
+
+        worker.addEventListener('message', (e) => {
+            if (e.data.type === 'PRODUCT_DETAILS') {
+                const d = e.data.details;
+                if (typeof window.injectData === "function") window.injectData(d.initial);
+                if (d.skuList && typeof window.renderSKUs === "function") window.renderSKUs(d.skuList);
+                if (d.promo && typeof window.injectPromo === "function") window.injectPromo(d.promo);
+                if (d.chartBuffer && typeof window.renderBinaryChart === "function") window.renderBinaryChart(d.chartBuffer);
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        worker.postMessage({
+            baseUrl: WIDGET_CONFIG.BASE_URL,
+            coreFile: `General/core_${fileMap.core}.bin`,
+            metaFile: `General/meta_${fileMap.meta}.bin`,
+            feedFile: `${country}/feed_${regionHashes.feed}.bin`,
+            linksFile: `${country}/links_${regionHashes.links}.bin`,
+            skuFile: `${country}/sku_${regionHashes.sku}.bin`,
+            promoFile: `${country}/promo_${regionHashes.promo}.bin`,
+            chartFile: `${country}/fluctuation_${regionHashes.fluctuation}.bin`,
+            query: urlParams.get('query'),
+            storeId: urlParams.get('store'),
+            mainUID: mainUIDEl ? mainUIDEl.textContent.trim() : null
+        });
+
+    } catch (err) { console.error(err); }
+}
+
+window.updateSKUPrice = function(item) {
+    if (typeof window.injectData === "function") {
+        window.injectData({
+            priceOriginal: item.priceOriginal,
+            priceDiscounted: item.priceDiscounted,
+            shippingFee: item.shippingFee,
+            minDelivery: item.minDelivery,
+            maxDelivery: item.maxDelivery
+        });
+    }
+    const v = document.querySelector(".variant-value");
+    if (v) v.textContent = item.props;
+};
+
+document.addEventListener("DOMContentLoaded", startWidget);
