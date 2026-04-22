@@ -6,19 +6,11 @@
     let initialFullData = null;
     let fileMap = null;
 
-    window.currentFileInfo = {
-        size: 0,
-        records: 0
-    };
+    window.currentFileInfo = { size: 0, records: 0 };
 
     const cleanProps = (str) => {
-        try {
-            const parsed = JSON.parse(str);
-            const items = Array.isArray(parsed) ? parsed[0] : parsed;
-            return Object.values(items).join(" - ");
-        } catch (e) {
-            return str.replace(/[\[\]\{\}\"\']/g, "").replace(/:/g, ": ").replace(/,/g, " - ").trim();
-        }
+        if (!str) return "_";
+        return str.replace(/\|/g, " - ").trim();
     };
 
     async function loadMap() {
@@ -31,11 +23,9 @@
 
     function getCloudName(type) {
         if (!fileMap) return null;
-        if (type === "core" || type === "meta") return `General/${type}_${fileMap[type]}.bin`;
+        if (type === "core" || type === "meta") return `General/${type}_${fileMap[type]}.json`;
         const hash = fileMap.regions[country]?.[type];
         if (!hash) return null;
-        window.currentFileInfo.size = parseInt(hash.substring(0, 8), 16);
-        window.currentFileInfo.records = parseInt(hash.substring(8, 16), 16);
         return `${country}/${type}_${hash}.bin`;
     }
 
@@ -47,34 +37,40 @@
             const targetUID = BigInt(domUIDStr);
             const feedFileName = getCloudName("feed");
             if (!feedFileName) return;
+
             const res = await fetch(`${BASE_URL}${feedFileName}`);
             if (!res.ok) return;
             const buffer = await res.arrayBuffer();
             const view = new DataView(buffer);
             const stride = 32;
+
             for (let i = 0; i < buffer.byteLength; i += stride) {
                 if (view.getBigUint64(i, true) === targetUID) {
-                    const flags = view.getUint8(i + 31);
                     const recordIndex = i / stride;
                     window.currentRecordIndex = recordIndex;
+                    const flags = view.getUint8(i + 31);
+
                     initialFullData = {
                         storeId: view.getUint32(i + 8, true),
                         priceOriginal: view.getUint32(i + 12, true) / 100,
                         priceDiscounted: view.getUint32(i + 16, true) / 100,
                         shippingFee: view.getUint32(i + 20, true) / 100,
                         orders: view.getUint16(i + 24, true),
-                        score: view.getUint8(i + 28) / 10,
                         reviews: view.getUint16(i + 26, true),
+                        score: view.getUint8(i + 28) / 10,
                         minDelivery: view.getUint8(i + 29),
                         maxDelivery: view.getUint8(i + 30),
-                        inStock: (flags & 0x20) !== 0,
+                        sudStatus: flags & 0x1F,
+                        isGlobal: (flags & 0x20) !== 0,
                         hasSKU: (flags & 0x40) !== 0,
                         hasPromo: (flags & 0x80) !== 0,
                         productAffCode: "",
                         storeAffCode: "",
                         storeName: ""
                     };
+
                     if (typeof window.injectData === "function") window.injectData(initialFullData);
+
                     fetchRange(getCloudName("links"), recordIndex * 100, 100, "LINKS");
                     if (initialFullData.hasSKU) fetchRange(getCloudName("sku"), recordIndex * 4508, 4508, "SKU");
                     if (initialFullData.hasPromo) fetchRange(getCloudName("promo"), recordIndex * 32, 32, "PROMO");
@@ -88,11 +84,14 @@
     async function fetchRange(fileName, start, length, type) {
         if (!fileName) return;
         try {
-            const res = await fetch(`${BASE_URL}${fileName}`, { headers: { 'Range': `bytes=${start}-${start + length - 1}` } });
+            const res = await fetch(`${BASE_URL}${fileName}`, { 
+                headers: { 'Range': `bytes=${start}-${start + length - 1}` } 
+            });
             if (res.status !== 206) return;
             const buffer = await res.arrayBuffer();
             const view = new DataView(buffer);
             const decoder = new TextDecoder("utf-8");
+
             if (type === "LINKS") {
                 const pCode = decoder.decode(new Uint8Array(buffer, 16, 14)).replace(/\0/g, '').trim();
                 const sCode = decoder.decode(new Uint8Array(buffer, 30, 14)).replace(/\0/g, '').trim();
@@ -101,37 +100,41 @@
                     initialFullData.productAffCode = pCode;
                     initialFullData.storeAffCode = sCode;
                     initialFullData.storeName = sName;
-                    localStorage.setItem(`store_${initialFullData.storeId}`, JSON.stringify({ name: sName, aff: sCode }));
                     if (typeof window.injectData === "function") window.injectData(initialFullData);
                 }
             } else if (type === "SKU") {
                 const skuList = [];
                 for (let s = 0; s < 30; s++) {
                     const offset = 8 + (s * 150);
-                    if (offset + 4 > buffer.byteLength) break;
+                    if (offset + 150 > buffer.byteLength) break;
                     const pDisc = view.getUint32(offset + 4, true) / 100;
                     if (pDisc === 0) continue;
+
                     const imgSlug = decoder.decode(new Uint8Array(buffer, offset + 14, 40)).replace(/\0/g, '').trim();
+                    const rawProps = decoder.decode(new Uint8Array(buffer, offset + 54, 96)).replace(/\0/g, '').trim();
+
                     skuList.push({
-                        skuIdx: s, 
+                        skuIdx: s,
                         priceOriginal: view.getUint32(offset, true) / 100,
                         priceDiscounted: pDisc,
                         shippingFee: view.getUint32(offset + 8, true) / 100,
                         minDelivery: view.getUint8(offset + 12),
                         maxDelivery: view.getUint8(offset + 13),
                         image: IMG_BASE_URL + imgSlug + (imgSlug.includes('.') ? "" : ".jpg"),
-                        props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 54, 96)).replace(/\0/g, '').trim())
+                        props: cleanProps(rawProps)
                     });
                 }
                 if (typeof window.renderSKUs === "function") window.renderSKUs(skuList);
-            } else if (type === "PROMO" && window.injectPromo) {
-                window.injectPromo({
-                    expiry: view.getUint32(8, true),
-                    quantity: view.getUint16(12, true),
-                    code: decoder.decode(new Uint8Array(buffer, 14, 18)).replace(/\0/g, '').trim()
-                });
-            } else if (type === "CHART" && window.renderBinaryChart) {
-                window.renderBinaryChart(buffer);
+            } else if (type === "PROMO") {
+                if (typeof window.injectPromo === "function") {
+                    window.injectPromo({
+                        expiry: view.getUint32(8, true),
+                        quantity: view.getUint16(12, true),
+                        code: decoder.decode(new Uint8Array(buffer, 14, 18)).replace(/\0/g, '').trim()
+                    });
+                }
+            } else if (type === "CHART") {
+                if (typeof window.renderBinaryChart === "function") window.renderBinaryChart(buffer);
             }
         } catch (e) {}
     }
@@ -153,7 +156,7 @@
     };
 
     window.resetToInitialData = function() {
-        window.selectedSkuIndex = 255; 
+        window.selectedSkuIndex = 255;
         if (initialFullData && typeof window.injectData === "function") {
             window.injectData(initialFullData);
             const variantEl = document.querySelector(".variant-value");
