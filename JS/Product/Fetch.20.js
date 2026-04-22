@@ -91,7 +91,7 @@
                     if (typeof window.injectData === "function") window.injectData(initialFullData);
                     
                     fetchRange(getCloudName("links"), recordIndex * 100, 100, "LINKS");
-                    if (initialFullData.hasSKU) fetchRange(getCloudName("sku"), recordIndex * 2888, 2888, "SKU");
+                    if (initialFullData.hasSKU) fetchRange(getCloudName("sku"), recordIndex * 4508, 4508, "SKU");
                     if (initialFullData.hasPromo) fetchRange(getCloudName("promo"), recordIndex * 32, 32, "PROMO");
                     fetchRange(getCloudName("fluctuation"), recordIndex * 2932, 2932, "CHART");
                     
@@ -124,11 +124,11 @@
             } else if (type === "SKU") {
                 const skuList = [];
                 for (let s = 0; s < 30; s++) {
-                    const offset = 8 + (s * 96);
+                    const offset = 8 + (s * 150);
                     if (offset + 4 > buffer.byteLength) break;
                     const pDisc = view.getUint32(offset + 4, true) / 100;
                     if (pDisc === 0) continue;
-                    const imgSlug = decoder.decode(new Uint8Array(buffer, offset + 14, 34)).replace(/\0/g, '').trim();
+                    const imgSlug = decoder.decode(new Uint8Array(buffer, offset + 14, 40)).replace(/\0/g, '').trim();
                     skuList.push({
                         skuIdx: s, 
                         priceOriginal: view.getUint32(offset, true) / 100,
@@ -137,7 +137,7 @@
                         minDelivery: view.getUint8(offset + 12),
                         maxDelivery: view.getUint8(offset + 13),
                         image: IMG_BASE_URL + imgSlug + (imgSlug.includes('.') ? "" : ".jpg"),
-                        props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 48, 48)).replace(/\0/g, '').trim())
+                        props: cleanProps(decoder.decode(new Uint8Array(buffer, offset + 96, 96)).replace(/\0/g, '').trim())
                     });
                 }
                 if (typeof window.renderSKUs === "function") window.renderSKUs(skuList);
