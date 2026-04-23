@@ -236,7 +236,9 @@ const storeWrapper = document.getElementById('store-bar-wrapper');
             </div>
         `;
     }
-)();
+};
+
+})();
 
 // =================== Promo ===================
 
