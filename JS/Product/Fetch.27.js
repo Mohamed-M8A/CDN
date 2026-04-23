@@ -16,7 +16,15 @@
 
     async function loadMap() {
         try {
-            const res = await fetch(`${BASE_URL}General/map.json?v=${Date.now()}`);
+            const cache = await caches.open(CACHE_NAME);
+            const url = `${BASE_URL}General/map.json`;
+            let res = await cache.match(url);
+            
+            if (!res) {
+                res = await fetch(`${url}?v=${Date.now()}`);
+                if (res.ok) cache.put(url, res.clone());
+            }
+            
             fileMap = await res.json();
             return true;
         } catch (e) { return false; }
@@ -28,6 +36,18 @@
         const hash = fileMap.regions[country]?.[type];
         if (!hash) return null;
         return `${country}/${type}_${hash}.bin`;
+    }
+
+    function injectWarningMessage() {
+        if (typeof window.showWarningUI === "function") {
+            window.showWarningUI();
+            return;
+        }
+        const container = document.querySelector(".product-essential") || document.body;
+        const msg = document.createElement("div");
+        msg.style = "background:#ff000021;color:#d93025;padding:12px;margin:10px 0;border-radius:8px;border:1px solid #d93025;text-align:center;font-weight:bold;font-size:14px;direction:rtl;";
+        msg.innerHTML = "⚠️ تنبيه: قد لا يكون هذا المنتج متوفراً حالياً في منطقتك.";
+        container.prepend(msg);
     }
 
     async function startEngine() {
@@ -60,9 +80,7 @@
                     const flags = view.getUint8(i + 31);
                     
                     const inStock = (flags & 0x20) !== 0;
-                    if (!inStock && typeof window.showWarningUI === "function") {
-                        window.showWarningUI();
-                    }
+                    if (!inStock) injectWarningMessage();
 
                     initialFullData = {
                         storeId: view.getUint32(i + 8, true),
