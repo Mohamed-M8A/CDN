@@ -15,17 +15,28 @@ class BinaryParser {
         const view = new DataView(buffer);
         for (let i = 0; i < buffer.byteLength; i += 32) {
             const id = view.getBigUint64(i, true);
+            if (id === 0n) continue;
+
+            const status = view.getUint8(i + 31);
+            const isVisible = (status & 0x20) !== 0;
+            if (!isVisible) continue;
+
             const storeId = view.getUint32(i + 8, true);
             if (targetStoreId !== null && storeId !== targetStoreId) continue;
             if (targetStoreId !== null) matchedIds.add(id);
-            const status = view.getUint8(i + 31);
+
             map.set(id, {
                 original: view.getUint32(i + 12, true) / 100,
                 price: view.getUint32(i + 16, true) / 100,
                 orders: view.getUint16(i + 24, true),
                 score: view.getUint8(i + 28) / 10,
                 delivery: { min: view.getUint8(i + 29), max: view.getUint8(i + 30) },
-                status: { promo: (status >> 7) & 1, inStock: (status >> 5) & 1 }
+                status: { 
+                    promo: (status >> 7) & 1, 
+                    multiSku: (status >> 6) & 1,
+                    isGlobal: (status >> 5) & 1,
+                    sud: status & 0x1F 
+                }
             });
         }
         return { map, matchedIds };
@@ -67,10 +78,9 @@ self.onmessage = async (e) => {
     }
 
     try {
-        // 1. تحميل الـ Feed والميتا أولاً (لأنهما ضروريان للفلترة أثناء الاستريم)
         const [feedRes, metaRes] = await Promise.all([
             getFileStreamOrBuffer(feedFile, 1),
-            metaFile ? getFileStreamOrBuffer(metaFile, 24) : Promise.resolve(null)
+            metaRes = metaFile ? getFileStreamOrBuffer(metaFile, 24) : Promise.resolve(null)
         ]);
 
         const feedBuf = await feedRes.arrayBuffer();
@@ -78,7 +88,6 @@ self.onmessage = async (e) => {
 
         let allowedIds = storeId ? storeMatchedIds : null;
 
-        // 2. معالجة البحث (الميتا) باستخدام Bloom Filter
         if (query && metaRes) {
             const metaBuf = await metaRes.arrayBuffer();
             const metaData = new Uint8Array(metaBuf);
@@ -98,7 +107,6 @@ self.onmessage = async (e) => {
             allowedIds = storeId ? new Set([...searchMatchedIds].filter(id => storeMatchedIds.has(id))) : searchMatchedIds;
         }
 
-        // 3. استريم ملف الـ Core
         const coreRes = await getFileStreamOrBuffer(coreFile, 24);
         const reader = coreRes.body.getReader();
         let leftover = new Uint8Array(0);
@@ -115,7 +123,7 @@ self.onmessage = async (e) => {
             let offset = 0;
             while (offset + 442 <= combined.length) {
                 const id = new DataView(combined.buffer, combined.byteOffset + offset, 8).getBigUint64(0, true);
-                if (!allowedIds || allowedIds.has(id)) {
+                if (feedMap.has(id) && (!allowedIds || allowedIds.has(id))) {
                     records.push(BinaryParser.parseCoreRecord(combined, offset, decoder));
                 }
                 offset += 442;
