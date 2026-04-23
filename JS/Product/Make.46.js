@@ -220,8 +220,12 @@ window.injectData = function(data) {
         moreRevContainer.href = affLink;
     }
 
-const storeWrapper = document.getElementById('store-bar-wrapper');
+    const storeWrapper = document.getElementById('store-bar-wrapper');
     if (storeWrapper && data.storeName) {
+        const storeKey = `store_${data.storeId}`;
+        const storeData = { name: data.storeName, aff: data.storeAffCode || "" };
+        localStorage.setItem(storeKey, JSON.stringify(storeData));
+
         const storeLink = `/p/store.html?store=${data.storeId}`;
         const defaultImg = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiwyg94bd89-ILQ8wlX5_Zvu31hLoGcooTyvF5kr88-uCv9QCZOEBDBVycAMDaerf2nnW9TB1EZdoJcmDS641L5ZsDMPFC8p3csM2jTsm8mP_ue_G1A6W5Cn-bohNUkDTU60v-AA5EAFaXceHJF99RzCNWAfvtzui1nitecMqZa2DA/s1600/17d3d08b-825f-43c8-814f-72b91d3a8c8c.png";
         
@@ -237,7 +241,7 @@ const storeWrapper = document.getElementById('store-bar-wrapper');
         `;
     }
 };
-
+    
 })();
 
 // =================== Promo ===================
