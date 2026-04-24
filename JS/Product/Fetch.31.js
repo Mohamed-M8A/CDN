@@ -1,7 +1,7 @@
 (function() {
     const BASE_URL = "https://api.iseekprice.com/";
     const IMG_BASE_URL = "https://ae-pic-a1.aliexpress-media.com/kf/";
-    const CACHE_NAME = 'souq-cache-v1';
+    const CACHE_NAME = 'ISeek-Cache-v1';
     const country = (localStorage.getItem("Cntry") || "SA").toUpperCase();
     
     let initialFullData = null;
@@ -12,14 +12,12 @@
         return str.replace(/\|/g, " - ").trim();
     };
 
-    async function loadMap() {
-        try {
-            const cache = await caches.open(CACHE_NAME);
-            const url = `${BASE_URL}General/map.json`;
-            let res = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
-            fileMap = await res.json();
+async function loadMap() {
+        if (window.fileMap) {
+            fileMap = window.fileMap;
             return true;
-        } catch (e) { return false; }
+        }
+        return !!fileMap; 
     }
 
     function getCloudName(type) {
@@ -49,10 +47,19 @@
 
             const url = BASE_URL + feedFileName;
             const cache = await caches.open(CACHE_NAME);
+
             let res = await cache.match(url);
-            if (!res) {
-                res = await fetch(url);
-                if (res.ok) cache.put(url, res.clone());
+            const now = Date.now();
+            const threeHours = 3 * 60 * 60 * 1000;
+
+            const lastCacheUpdate = localStorage.getItem("last_feed_update_" + feedFileName);
+            
+            if (!res || !lastCacheUpdate || (now - lastCacheUpdate > threeHours)) {
+                res = await fetch(url + "?v=" + now);
+                if (res.ok) {
+                    cache.put(url, res.clone());
+                    localStorage.setItem("last_feed_update_" + feedFileName, now);
+                }
             }
 
             if (!res || !res.ok) return;
