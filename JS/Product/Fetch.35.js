@@ -5,6 +5,7 @@
     const country = (localStorage.getItem("Cntry") || "SA").toUpperCase();
     
     let initialFullData = null;
+    window.currentRecordIndex = 0;
     let fileMap = null;
 
     const cleanProps = (str) => {
@@ -74,8 +75,9 @@ async function loadMap() {
             const stride = 32;
 
             for (let i = 0; i < buffer.byteLength; i += stride) {
-                if (view.getBigUint64(i, true) === targetUID) {
+                    if (view.getBigUint64(i, true) === targetUID) {
                     const recordIndex = i / stride;
+                    window.currentRecordIndex = recordIndex;
                     const flags = view.getUint8(i + 31);
                     const inStock = (flags & 0x20) !== 0;
                     
@@ -164,6 +166,7 @@ async function loadMap() {
     }
 
     window.updateSKUPrice = function(item) {
+        window.selectedSkuIndex = item.skuIdx;
         if (initialFullData && typeof window.injectData === "function") {
             window.injectData({
                 ...initialFullData, priceOriginal: item.priceOriginal,
