@@ -13,7 +13,17 @@
     };
 
 async function loadMap() {
-        return (fileMap !== null); 
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const url = `${BASE_URL}General/map.json`;
+            let res = await cache.match(url);
+            if (!res) {
+                res = await fetch(`${url}?v=${Date.now()}`);
+                if (res.ok) cache.put(url, res.clone());
+            }
+            fileMap = await res.json();
+            return true;
+        } catch (e) { return false; }
     }
 
     function getCloudName(type) {
