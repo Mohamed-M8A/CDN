@@ -19,7 +19,7 @@
             const url = `${BASE_URL}General/map.json`;
             let res = await cache.match(url);
             if (!res) {
-                res = await fetch(`${url}?v=${Date.now()}`);
+                res = await fetch(url);
                 if (res.ok) cache.put(url, res.clone());
             }
             fileMap = await res.json();
