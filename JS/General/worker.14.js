@@ -56,7 +56,7 @@ class BinaryParser {
 
 self.onmessage = async (e) => {
     const { baseUrl, coreFile, metaFile, feedFile, query, storeId } = e.data;
-    const CACHE_NAME = 'souq-cache-v1';
+    const CACHE_NAME = 'ISeek-Cache-v1';
     const decoder = new TextDecoder();
 
     async function getFile(fileName, hours) {
