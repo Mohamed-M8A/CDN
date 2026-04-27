@@ -16,15 +16,11 @@ class BinaryParser {
         for (let i = 0; i < buffer.byteLength; i += 32) {
             const id = view.getBigUint64(i, true);
             if (id === 0n) continue;
-
             const status = view.getUint8(i + 31);
-            const isVisible = (status & 0x20) !== 0;
-            if (!isVisible) continue;
-
+            if (!((status & 0x20) !== 0)) continue;
             const storeId = view.getUint32(i + 8, true);
             if (targetStoreId !== null && storeId !== targetStoreId) continue;
             if (targetStoreId !== null) matchedIds.add(id);
-
             map.set(id, {
                 original: view.getUint32(i + 12, true) / 100,
                 price: view.getUint32(i + 16, true) / 100,
@@ -59,7 +55,7 @@ self.onmessage = async (e) => {
     const CACHE_NAME = 'ISeek-Cache-v1';
     const decoder = new TextDecoder();
 
-async function getFile(fileName, hours) {
+    async function getFile(fileName, hours) {
         const url = baseUrl + fileName;
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(url);
@@ -91,12 +87,21 @@ async function getFile(fileName, hours) {
                 const metaData = new Uint8Array(metaBuf);
                 const metaView = new DataView(metaBuf);
                 const searchMatchedIds = new Set();
-                let hA = BinaryParser.murmur(query.toLowerCase(), 42), hB = BinaryParser.murmur(query.toLowerCase(), 99);
+                let qL = query.toLowerCase();
+                let hA = BinaryParser.murmur(qL, 42);
+                let hB = BinaryParser.murmur(qL, 99);
                 let bits = [];
-                for (let i = 0; i < 7; i++) bits.push((hA + i * hB) % 2048);
+                for (let i = 0; i < 8; i++) {
+                    bits.push(Math.abs(hA + i * hB) % 2048);
+                }
                 for (let i = 0; i < metaData.length; i += 264) {
                     let match = true;
-                    for (let b of bits) { if (!(metaData[i + 8 + Math.floor(b / 8)] & (1 << (b % 8)))) { match = false; break; } }
+                    for (let b of bits) { 
+                        if (!(metaData[i + 8 + Math.floor(b / 8)] & (1 << (b % 8)))) { 
+                            match = false; 
+                            break; 
+                        } 
+                    }
                     if (match) searchMatchedIds.add(metaView.getBigUint64(i, true));
                 }
                 allowedIds = storeId ? new Set([...searchMatchedIds].filter(id => storeMatchedIds.has(id))) : searchMatchedIds;
