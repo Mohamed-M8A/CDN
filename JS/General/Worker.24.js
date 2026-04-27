@@ -1,5 +1,7 @@
 const workerCode = `
+/* --- CLASS DEFINITION --- */
 class BinaryParser {
+    /* --- HASHING UTILITY --- */
     static murmur(str, seed) {
         let h = seed ^ str.length;
         for (let i = 0; i < str.length; i++) {
@@ -9,6 +11,7 @@ class BinaryParser {
         return h >>> 0;
     }
 
+    /* --- FEED PARSING LOGIC --- */
     static parseFeed(buffer, targetStoreId = null) {
         const map = new Map();
         const matchedIds = new Set();
@@ -38,6 +41,7 @@ class BinaryParser {
         return { map, matchedIds };
     }
 
+    /* --- CORE RECORD PARSING --- */
     static parseCoreRecord(uint8, offset, decoder) {
         const view = new DataView(uint8.buffer, uint8.byteOffset + offset, 442);
         return {
@@ -50,11 +54,13 @@ class BinaryParser {
     }
 }
 
+/* --- WORKER EVENT LISTENER --- */
 self.onmessage = async (e) => {
     const { baseUrl, coreFile, metaFile, feedFile, query, storeId } = e.data;
     const CACHE_NAME = 'ISeek-Cache-v1';
     const decoder = new TextDecoder();
 
+    /* --- NETWORK & CACHE HELPER --- */
     async function getFile(fileName, hours) {
         const url = baseUrl + fileName;
         const cache = await caches.open(CACHE_NAME);
@@ -71,7 +77,9 @@ self.onmessage = async (e) => {
         return null;
     }
 
+    /* --- MAIN EXECUTION BLOCK --- */
     try {
+        /* --- FEED PROCESSING --- */
         const feedRes = await getFile(feedFile, 1);
         if (!feedRes) throw new Error("Feed not found");
         const feedBuf = await feedRes.arrayBuffer();
@@ -79,6 +87,7 @@ self.onmessage = async (e) => {
 
         let allowedIds = storeId ? storeMatchedIds : null;
 
+        /* --- SEARCH & META FILTERING --- */
         if (query && metaFile) {
             const metaRes = await getFile(metaFile, 24);
             if (metaRes) {
@@ -107,6 +116,7 @@ self.onmessage = async (e) => {
             }
         }
 
+        /* --- CORE DATA STREAMING --- */
         const coreRes = await getFile(coreFile, 24);
         if (!coreRes) throw new Error("Core not found");
         const reader = coreRes.body.getReader();
@@ -129,6 +139,8 @@ self.onmessage = async (e) => {
             leftover = combined.slice(offset);
             if (records.length > 0) self.postMessage({ type: 'BATCH', batch: records, feed: feedMap });
         }
+        
+        /* --- FINAL TERMINATION --- */
         self.postMessage({ type: 'DONE' });
     } catch (err) {
         self.postMessage({ type: 'ERROR', error: err.message });
