@@ -12,16 +12,16 @@
         return str.replace(/\|/g, " - ").trim();
     };
 
-async function loadMap() {
-    for (let i = 0; i < 5; i++) {
-        if (window.fileMap) {
-            fileMap = window.fileMap;
-            return true;
+    async function loadMap() {
+        for (let i = 0; i < 10; i++) {
+            if (window.fileMap) {
+                fileMap = window.fileMap;
+                return true;
+            }
+            await new Promise(r => setTimeout(r, 500));
         }
-        await new Promise(r => setTimeout(r, 500));
+        return false; 
     }
-    return false; 
-}
 
     function getCloudName(type) {
         if (!fileMap) return null;
@@ -41,22 +41,21 @@ async function loadMap() {
 
     async function startEngine() {
         try {
+            if (!window.sharedFeedBuffer) { 
+                for (let i = 0; i < 10; i++) { 
+                    if (window.sharedFeedBuffer) break; 
+                    await new Promise(r => setTimeout(r, 500)); 
+                } 
+            } 
+            
+            const buffer = window.sharedFeedBuffer; 
+            if (!buffer) return; 
 
-             if (!window.sharedFeedBuffer) { 
-             for (let i = 0; i < 10; i++) { 
-             if (window.sharedFeedBuffer) break; 
-             await new Promise(r => setTimeout(r, 500)); 
-             } 
-             } 
-             const buffer = window.sharedFeedBuffer; 
-             if (!buffer) return; 
-    
             if (!await loadMap()) return;
+
             const domUIDStr = document.querySelector(".UID")?.textContent.trim();
             if (!domUIDStr) return;
             const targetUID = BigInt(domUIDStr);
-            const feedFileName = getCloudName("feed");
-            if (!feedFileName) return;
 
             const view = new DataView(buffer);
             const stride = 32;
