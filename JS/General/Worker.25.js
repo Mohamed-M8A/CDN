@@ -61,21 +61,12 @@ self.onmessage = async (e) => {
     const decoder = new TextDecoder();
 
     /* --- NETWORK & CACHE HELPER --- */
-    async function getFile(fileName, hours) {
-        const url = baseUrl + fileName;
-        const cache = await caches.open(CACHE_NAME);
-        const cached = await cache.match(url);
-        if (cached) {
-            const date = cached.headers.get('date');
-            if (date && (Date.now() - new Date(date).getTime()) < hours * 3600000) return cached;
-        }
-        const res = await fetch(url);
-        if (res.ok) { 
-            await cache.put(url, res.clone()); 
-            return res; 
-        }
-        return null;
-    }
+   
+    async function getFile(fileName) {
+    const url = baseUrl + fileName;
+    const res = await fetch(url);
+    return res.ok ? res : null;
+}
 
     /* --- MAIN EXECUTION BLOCK --- */
     try {
