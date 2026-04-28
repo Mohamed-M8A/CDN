@@ -13,27 +13,21 @@
         return str.replace(/\|/g, " - ").trim();
     };
 
-    async function loadMap() {
-        try {
-            const cache = await caches.open(CACHE_NAME);
-            const url = `${BASE_URL}General/map.json`;
-            
-            let res = await cache.match(url);
-            
-            if (!res) {
-                await new Promise(r => setTimeout(r, 500));
-                res = await cache.match(url);
-            }
-
-            if (!res) {
-                res = await fetch(url);
-                if (res.ok) cache.put(url, res.clone());
-            }
-            
-            fileMap = await res.json();
-            return true;
-        } catch (e) { return false; }
+async function loadMap() {
+    if (window.fileMap) {
+        fileMap = window.fileMap;
+        return true;
     }
+    try {
+        const res = await fetch(`${BASE_URL}General/map.json?v=${Date.now()}`);
+        if (res.ok) {
+            window.fileMap = await res.json();
+            fileMap = window.fileMap;
+            return true;
+        }
+    } catch (e) { return false; }
+    return false;
+}
 
     function getCloudName(type) {
         if (!fileMap) return null;
