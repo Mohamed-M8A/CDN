@@ -119,7 +119,8 @@ async function startWidget() {
 
     try {
         const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
-        const fileMap = await mapRes.json();
+        window.fileMap = await mapRes.json();
+        const fileMap = window.fileMap;
         const country = localStorage.getItem("Cntry") || "SA";
 
         const coreFile = `General/core_${fileMap.core}.bin`;
