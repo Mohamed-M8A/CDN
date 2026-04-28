@@ -57,14 +57,7 @@ async function loadMap() {
             const url = BASE_URL + feedFileName;
             const cache = await caches.open(CACHE_NAME);
 
-            let res = await cache.match(url);
-            
-            if (!res) {
-                res = await fetch(url);
-                if (res.ok) {
-                    cache.put(url, res.clone());
-                }
-            }
+            let res = await fetch(url);
 
             if (!res || !res.ok) return;
             const buffer = await res.arrayBuffer();
