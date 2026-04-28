@@ -121,7 +121,7 @@ async function startWidget() {
         const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
         window.fileMap = await mapRes.json();
         const fileMap = window.fileMap;
-        const country = localStorage.getItem("Cntry") || "SA";*
+        const country = localStorage.getItem("Cntry") || "SA";
         const feedUrl = `${WIDGET_CONFIG.BASE_URL}${country}/feed_${fileMap.regions[country].feed}.bin`;
         const feedRes = await fetch(feedUrl);
         window.sharedFeedBuffer = await feedRes.arrayBuffer();
