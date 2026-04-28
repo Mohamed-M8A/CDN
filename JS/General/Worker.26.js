@@ -55,25 +55,14 @@ class BinaryParser {
 }
 
 /* --- WORKER EVENT LISTENER --- */
-self.onmessage = async (e) => {
+    self.onmessage = async (e) => {
+    const feedBuf = e.data.feedBuffer;
     const { baseUrl, coreFile, metaFile, feedFile, query, storeId } = e.data;
-    const CACHE_NAME = 'ISeek-Cache-v1';
     const decoder = new TextDecoder();
-
-    /* --- NETWORK & CACHE HELPER --- */
-   
-    async function getFile(fileName) {
-    const url = baseUrl + fileName;
-    const res = await fetch(url);
-    return res.ok ? res : null;
-}
 
     /* --- MAIN EXECUTION BLOCK --- */
     try {
         /* --- FEED PROCESSING --- */
-        const feedRes = await getFile(feedFile, 1);
-        if (!feedRes) throw new Error("Feed not found");
-        const feedBuf = await feedRes.arrayBuffer();
         const { map: feedMap, matchedIds: storeMatchedIds } = BinaryParser.parseFeed(feedBuf, storeId ? parseInt(storeId) : null);
 
         let allowedIds = storeId ? storeMatchedIds : null;
