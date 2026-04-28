@@ -14,19 +14,14 @@
     };
 
 async function loadMap() {
-    if (window.fileMap) {
-        fileMap = window.fileMap;
-        return true;
-    }
-    try {
-        const res = await fetch(`${BASE_URL}General/map.json?v=${Date.now()}`);
-        if (res.ok) {
-            window.fileMap = await res.json();
+    for (let i = 0; i < 5; i++) {
+        if (window.fileMap) {
             fileMap = window.fileMap;
             return true;
         }
-    } catch (e) { return false; }
-    return false;
+        await new Promise(r => setTimeout(r, 500));
+    }
+    return false; 
 }
 
     function getCloudName(type) {
