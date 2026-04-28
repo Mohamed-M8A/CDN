@@ -55,22 +55,22 @@ class BinaryParser {
 }
 
 /* --- WORKER EVENT LISTENER --- */
-    self.onmessage = async (e) => {
-    const feedBuf = e.data.feedBuffer;
-    const { baseUrl, coreFile, metaFile, feedFile, query, storeId } = e.data;
+self.onmessage = async (e) => {
+    const { baseUrl, coreFile, metaFile, feedBuffer, query, storeId } = e.data;
     const decoder = new TextDecoder();
 
     /* --- MAIN EXECUTION BLOCK --- */
     try {
         /* --- FEED PROCESSING --- */
-        const { map: feedMap, matchedIds: storeMatchedIds } = BinaryParser.parseFeed(feedBuf, storeId ? parseInt(storeId) : null);
+        if (!feedBuffer) throw new Error("Feed buffer is required");
+        const { map: feedMap, matchedIds: storeMatchedIds } = BinaryParser.parseFeed(feedBuffer, storeId ? parseInt(storeId) : null);
 
         let allowedIds = storeId ? storeMatchedIds : null;
 
         /* --- SEARCH & META FILTERING --- */
         if (query && metaFile) {
-            const metaRes = await getFile(metaFile, 24);
-            if (metaRes) {
+            const metaRes = await fetch(baseUrl + metaFile);
+            if (metaRes.ok) {
                 const metaBuf = await metaRes.arrayBuffer();
                 const metaData = new Uint8Array(metaBuf);
                 const metaView = new DataView(metaBuf);
@@ -97,8 +97,8 @@ class BinaryParser {
         }
 
         /* --- CORE DATA STREAMING --- */
-        const coreRes = await getFile(coreFile, 24);
-        if (!coreRes) throw new Error("Core not found");
+        const coreRes = await fetch(baseUrl + coreFile);
+        if (!coreRes.ok) throw new Error("Core not found");
         const reader = coreRes.body.getReader();
         let leftover = new Uint8Array(0);
 
