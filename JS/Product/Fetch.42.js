@@ -1,7 +1,6 @@
 (function() {
     const BASE_URL = "https://api.iseekprice.com/";
     const IMG_BASE_URL = "https://ae-pic-a1.aliexpress-media.com/kf/";
-    const CACHE_NAME = 'ISeek-Cache-v1';
     const country = (localStorage.getItem("Cntry") || "SA").toUpperCase();
     
     let initialFullData = null;
@@ -42,6 +41,16 @@ async function loadMap() {
 
     async function startEngine() {
         try {
+
+             if (!window.sharedFeedBuffer) { 
+             for (let i = 0; i < 10; i++) { 
+             if (window.sharedFeedBuffer) break; 
+             await new Promise(r => setTimeout(r, 500)); 
+             } 
+             } 
+             const buffer = window.sharedFeedBuffer; 
+             if (!buffer) return; 
+    
             if (!await loadMap()) return;
             const domUIDStr = document.querySelector(".UID")?.textContent.trim();
             if (!domUIDStr) return;
@@ -49,13 +58,6 @@ async function loadMap() {
             const feedFileName = getCloudName("feed");
             if (!feedFileName) return;
 
-            const url = BASE_URL + feedFileName;
-            const cache = await caches.open(CACHE_NAME);
-
-            let res = await fetch(url);
-
-            if (!res || !res.ok) return;
-            const buffer = await res.arrayBuffer();
             const view = new DataView(buffer);
             const stride = 32;
 
