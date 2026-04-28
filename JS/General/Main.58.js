@@ -121,7 +121,10 @@ async function startWidget() {
         const mapRes = await fetch(`${WIDGET_CONFIG.BASE_URL}General/map.json?v=${Date.now()}`);
         window.fileMap = await mapRes.json();
         const fileMap = window.fileMap;
-        const country = localStorage.getItem("Cntry") || "SA";
+        const country = localStorage.getItem("Cntry") || "SA";*
+        const feedUrl = `${WIDGET_CONFIG.BASE_URL}${country}/feed_${fileMap.regions[country].feed}.bin`;
+        const feedRes = await fetch(feedUrl);
+        window.sharedFeedBuffer = await feedRes.arrayBuffer();
 
         const coreFile = `General/core_${fileMap.core}.bin`;
         const metaFile = `General/meta_${fileMap.meta}.bin`;
@@ -191,13 +194,13 @@ async function startWidget() {
 
         const urlParams = new URLSearchParams(window.location.search);
         worker.postMessage({
-            baseUrl: WIDGET_CONFIG.BASE_URL,
-            coreFile: coreFile,
-            metaFile: metaFile,
-            feedFile: feedFile,
-            query: urlParams.get('query'),
-            storeId: urlParams.get('store')
-        });
+         baseUrl: WIDGET_CONFIG.BASE_URL,
+         coreFile: coreFile,
+         metaFile: metaFile,
+         feedBuffer: window.sharedFeedBuffer,
+         query: urlParams.get('query'),
+         storeId: urlParams.get('store')
+         });
 
         loadMoreBtn.onclick = renderNextBatch;
     } catch (err) {
