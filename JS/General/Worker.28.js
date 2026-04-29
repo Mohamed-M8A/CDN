@@ -75,22 +75,35 @@ self.onmessage = async (e) => {
                 const metaData = new Uint8Array(metaBuf);
                 const metaView = new DataView(metaBuf);
                 const searchMatchedIds = new Set();
-                let qL = query.toLowerCase();
-                let hA = BinaryParser.murmur(qL, 42);
-                let hB = BinaryParser.murmur(qL, 99);
-                let bits = [];
-                for (let i = 0; i < 8; i++) {
-                    bits.push(Math.abs(hA + i * hB) % 2048);
-                }
-                for (let i = 0; i < metaData.length; i += 264) {
-                    let match = true;
-                    for (let b of bits) { 
-                        if (!(metaData[i + 8 + Math.floor(b / 8)] & (1 << (b % 8)))) { 
-                            match = false; 
-                            break; 
-                        } 
+                
+                const queries = Array.isArray(query) ? query : [query];
+                const allQueriesBits = queries.map(q => {
+                    let qL = q.toLowerCase();
+                    let hA = BinaryParser.murmur(qL, 42);
+                    let hB = BinaryParser.murmur(qL, 99);
+                    let bits = [];
+                    for (let i = 0; i < 8; i++) {
+                        bits.push(Math.abs(hA + i * hB) % 2048);
                     }
-                    if (match) searchMatchedIds.add(metaView.getBigUint64(i, true));
+                    return bits;
+                });
+
+                for (let i = 0; i < metaData.length; i += 264) {
+                    let recordMatched = false;
+                    for (let bits of allQueriesBits) {
+                        let match = true;
+                        for (let b of bits) { 
+                            if (!(metaData[i + 8 + Math.floor(b / 8)] & (1 << (b % 8)))) { 
+                                match = false; 
+                                break; 
+                            } 
+                        }
+                        if (match) {
+                            recordMatched = true;
+                            break;
+                        }
+                    }
+                    if (recordMatched) searchMatchedIds.add(metaView.getBigUint64(i, true));
                 }
                 allowedIds = storeId ? new Set([...searchMatchedIds].filter(id => storeMatchedIds.has(id))) : searchMatchedIds;
             }
