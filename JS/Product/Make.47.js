@@ -51,14 +51,21 @@
             container.innerHTML = starsHTML;
         },
 
-        renderReviewSection() {
+renderReviewSection() {
+            const tab5 = document.getElementById('tab5');
+            if (tab5 && !tab5.querySelector('.more-reviews-link')) {
+                tab5.insertAdjacentHTML('beforeend', `
+                    <div class="more-reviews-link">
+                        <a href="#" rel="noopener" target="_blank">شاهد المزيد من المراجعات في المتجر الرسمي ←</a>
+                    </div>
+                `);
+            }
             const reviewGroups = document.querySelectorAll('.Customer-Reviews .stars-group');
             reviewGroups.forEach(group => {
                 const rating = parseFloat(group.getAttribute('data-rating')) || 5;
                 this.drawStars(group, rating);
             });
         }
-    };
 
     const init = () => {
         UILayout.injectEmptyShelf();
