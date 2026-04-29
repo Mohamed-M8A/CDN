@@ -646,3 +646,128 @@ window.renderBinaryChart = function(buffer) {
 
     observer.observe(document.body, { childList: true, subtree: true });
 })();
+
+
+
+
+// =================== Telegram Alerts ===================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const uidEl = document.querySelector('.UID');
+    const box = document.getElementById('telegram-alert-wrapper');
+    
+    if (!uidEl || !box) return;
+
+    const uid = uidEl.innerText.trim();
+    const bot = 'ISeekPrice_bot';
+    const rawCountry = localStorage.getItem('Cntry') || 'SA'; 
+    const workerUrl = 'https://iseekprice-core.m7md20051968.workers.dev/submit-alert';
+
+    const countriesMap = {
+        'SA': 'السعودية 🇸🇦', 'AE': 'الإمارات 🇦🇪', 'OM': 'عُمان 🇴🇲', 
+        'MA': 'المغرب 🇦🇪', 'DZ': 'الجزائر 🇩🇿', 'TN': 'تونس 🇹🇳'
+    };
+    const countryName = countriesMap[rawCountry] || rawCountry;
+
+    const modalHtml = `
+        <div class="is-overlay" id="isOverlay">
+            <div class="is-modal">
+                <h3>🔔 تتبع السعر الذكي</h3>
+                <p style="font-size:13px;">الدولة المحددة: <b>${countryName}</b></p>
+                <label>نسبة خصم سريعة:</label>
+                <div class="is-chips">
+                    <div class="is-chip" data-pct="10">خصم 10%</div>
+                    <div class="is-chip" data-pct="25">خصم 25%</div>
+                    <div class="is-chip" data-pct="40">خصم 40%</div>
+                </div>
+                <label>السعر المستهدف:</label>
+                <input type="number" id="isPrice" placeholder="0.00"/>
+                <label>الإيميل (اختياري):</label>
+                <input type="email" id="isMail" placeholder="your@email.com"/>
+                <div class="is-btns">
+                    <button id="isGo" class="is-ok">تفعيل في تليجرام</button>
+                    <button id="isClose" class="is-no">إلغاء</button>
+                </div>
+                <span class="is-info">سنرسل لك تنبيهاً فور انخفاض السعر لهذا المستوى.</span>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const btn = document.createElement('button');
+    btn.className = 'iseek-btn';
+    btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg> <span>تتبع السعر الآن</span>`;
+
+    btn.onclick = () => document.getElementById('isOverlay').style.display = 'flex';
+    document.getElementById('isClose').onclick = () => document.getElementById('isOverlay').style.display = 'none';
+
+        function getCurrentPrice() {
+        const priceEl = document.querySelector('.price-discounted');
+        if (!priceEl) return 0;
+
+        const rawText = priceEl.innerText.replace(/,/g, '');
+        const match = rawText.match(/\d+(\.\d+)?/); 
+        
+        return match ? parseFloat(match[0]) : 0;
+    }
+
+    document.querySelectorAll('.is-chip').forEach(chip => {
+        chip.onclick = function() {
+            const currentPrice = getCurrentPrice();
+            if (currentPrice > 0) {
+                const pct = parseInt(this.getAttribute('data-pct'));
+                const target = (currentPrice * (1 - pct/100)).toFixed(2);
+                document.getElementById('isPrice').value = target;
+                document.querySelectorAll('.is-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            }
+        };
+    });
+
+    document.getElementById('isGo').onclick = async function() {
+        const goBtn = this;
+        let targetP = parseFloat(document.getElementById('isPrice').value) || 0;
+        
+        if (!targetP || targetP <= 0) {
+            alert("⚠️ من فضلك أدخل سعر صحيح");
+            return;
+        }
+
+        goBtn.disabled = true;
+        goBtn.innerText = "جاري التحضير...";
+
+        const payload = {
+            uid: uid,
+            targetPrice: targetP,
+            currentPrice: getCurrentPrice(),
+            country: rawCountry,
+            email: document.getElementById('isMail').value || 'none',
+            fingerprint: localStorage.getItem('user_fingerprint') || 'ID-GUEST',
+            recordIdx: window.currentRecordIndex,
+            skuIdx: (window.selectedSkuIndex !== undefined) ? window.selectedSkuIndex : 255
+        };
+
+        try {
+            const response = await fetch(workerUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.token) {
+                window.open(`https://t.me/${bot}?start=${result.token}`, '_blank');
+                document.getElementById('isOverlay').style.display = 'none';
+            } else {
+                throw new Error();
+            }
+        } catch (err) {
+            alert("⚠️ عذراً، حدث خطأ أثناء الاتصال. حاول مرة أخرى.");
+        } finally {
+            goBtn.disabled = false;
+            goBtn.innerText = "تفعيل في تليجرام";
+        }
+    };
+
+    box.appendChild(btn);
+});
