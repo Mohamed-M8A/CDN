@@ -66,6 +66,7 @@ renderReviewSection() {
                 this.drawStars(group, rating);
             });
         }
+       };
 
     const init = () => {
         UILayout.injectEmptyShelf();
