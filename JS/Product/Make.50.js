@@ -92,7 +92,8 @@
     const activeCountry = localStorage.getItem("Cntry") || "SA";
     const formatPrice = num => parseFloat(num).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-    window.renderSKUs = function(skuList) {
+    
+     window.renderSKUs = function(skuList) {
         const skuWrapper = document.getElementById('sku-images-wrapper') || Object.assign(document.createElement('div'), {id: 'sku-images-wrapper'});
         skuWrapper.style.display = 'contents';
         skuWrapper.innerHTML = "";
@@ -114,8 +115,20 @@
             
             skuWrapper.appendChild(img);
         });
+
+        const skuParam = new URLSearchParams(window.location.search).get('sku');
+        if (skuParam && skuParam !== '255') {
+            setTimeout(() => {
+                const allImgs = Array.from(document.querySelectorAll('.thumbnails-slider img'));
+                const targetImg = allImgs.find(i => i._skuData && i._skuData.skuIdx == skuParam);
+                if (targetImg && typeof window.changeImage === 'function') {
+                    window.changeImage(allImgs.indexOf(targetImg));
+                }
+            }, 250);
+        }
     };
 
+    
 window.injectData = function(data) {
     const root = document.getElementById('dynamic-shelf');
     if (!root || root.innerHTML.trim() === "") {
