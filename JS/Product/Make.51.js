@@ -674,7 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const uid = uidEl.innerText.trim();
     const bot = 'ISeekPrice_bot';
     const rawCountry = localStorage.getItem('Cntry') || 'SA'; 
-    const workerUrl = 'https://iseekprice-core.m7md20051968.workers.dev/submit-alert';
+    const workerUrl = 'https://iseek-telegram.m7md20051968.workers.dev/submit-alert';
 
     const countriesMap = {
         'SA': 'السعودية 🇸🇦', 'AE': 'الإمارات 🇦🇪', 'OM': 'عُمان 🇴🇲', 
