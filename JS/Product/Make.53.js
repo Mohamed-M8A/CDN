@@ -30,18 +30,6 @@ let enableInitialScroll=!1;function showTab(id,btn,forceScroll=!1){document.quer
 if(btn)btn.classList.add('active');}
 let tabCheck=setInterval(()=>{const firstBtn=document.querySelector('.tab-buttons button');const firstTab=document.getElementById('tab1');if(firstBtn&&firstTab){showTab('tab1',firstBtn);document.querySelectorAll('.tab-buttons button').forEach(btn=>{btn.addEventListener('click',()=>{const id=btn.getAttribute('onclick')?.match(/'(.*?)'/)?.[1];if(id)showTab(id,btn,!0);})});clearInterval(tabCheck)}},100);setTimeout(()=>clearInterval(tabCheck),5000)
 
-// Tab (5)
-
-const goToReviewsBtn=document.getElementById("goToReviews");if(goToReviewsBtn){goToReviewsBtn.addEventListener("click",function(e){e.preventDefault();const tabButtons=document.querySelectorAll('.tab-buttons button');const targetButton=Array.from(tabButtons).find(btn=>btn.getAttribute('onclick')?.includes("'tab5'"));if(targetButton){showTab('tab5',targetButton,!0);setTimeout(()=>{const reviewsSection=document.getElementById('tab5');if(reviewsSection){reviewsSection.scrollIntoView({behavior:'smooth'})}},300)}})}
-
-// =================== Buttons Text ===================
-
-const buyBtn = document.querySelector(".buy-button");
-if (buyBtn) buyBtn.textContent = "اطلب الآن";
-
-const cartBtn = document.querySelector(".add-to-cart");
-if (cartBtn) cartBtn.textContent = "أضف للسلة";
-
 const textMap = {
   "الوصف": "التفاصيل",
   "المميزات": "المزايا",
@@ -56,6 +44,11 @@ document.querySelectorAll(".tab-buttons button").forEach(btn => {
     btn.textContent = textMap[oldText];
   }
 });
+
+
+// Tab (5)
+
+const goToReviewsBtn=document.getElementById("goToReviews");if(goToReviewsBtn){goToReviewsBtn.addEventListener("click",function(e){e.preventDefault();const tabButtons=document.querySelectorAll('.tab-buttons button');const targetButton=Array.from(tabButtons).find(btn=>btn.getAttribute('onclick')?.includes("'tab5'"));if(targetButton){showTab('tab5',targetButton,!0);setTimeout(()=>{const reviewsSection=document.getElementById('tab5');if(reviewsSection){reviewsSection.scrollIntoView({behavior:'smooth'})}},300)}})}
 
 
 // =================== Product UI Layout & Data Injection ===================
@@ -92,8 +85,8 @@ document.querySelectorAll(".tab-buttons button").forEach(btn => {
                 <hr class="clean-divider">
 
                 <div class="button-container">
-                    <a href="#" class="buy-button" target="_blank" rel="nofollow">-</a>
-                    <button class="add-to-cart">-</button>
+                    <a href="#" class="buy-button" target="_blank" rel="nofollow">اطلب الآن</a>
+                    <button class="add-to-cart">اضف للسلة</button>
                     <div id="telegram-alert-wrapper"></div>
                 </div>
                 <div id="store-bar-wrapper"></div>
