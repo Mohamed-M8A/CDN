@@ -402,7 +402,9 @@ window.copyCoupon = function(code) {
     }
 };
 
+
 // =================== Chart ===================
+
 
 window.renderBinaryChart = function(buffer) {
     try {
@@ -435,46 +437,19 @@ window.renderBinaryChart = function(buffer) {
         if (!chartCanvas.parentNode.id.includes("scroll-wrapper")) {
             const scrollContainer = document.createElement("div");
             scrollContainer.id = "chart-scroll-wrapper";
-            scrollContainer.style.cssText = "width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; padding: 20px 0; box-sizing: border-box;";
             
             const innerWrapper = document.createElement("div");
             innerWrapper.id = "chart-inner-resizer";
-            innerWrapper.style.height = "320px";
-            innerWrapper.style.position = "relative";
             
             chartCanvas.parentNode.insertBefore(scrollContainer, chartCanvas);
             innerWrapper.appendChild(chartCanvas);
             scrollContainer.appendChild(innerWrapper);
-            
-            const style = document.createElement('style');
-            style.innerHTML = `
-                #chart-scroll-wrapper::-webkit-scrollbar {height: 4px;}
-                #chart-scroll-wrapper::-webkit-scrollbar-thumb {background: #ccc; border-radius: 10px;}
-                @media (min-width: 992px) { #chart-inner-resizer { width: 100% !important; } }
-                #chart-tooltip {
-                    position: absolute;
-                    background: rgba(0, 0, 0, 0.85);
-                    color: #fff;
-                    padding: 10px;
-                    border-radius: 6px;
-                    pointer-events: none;
-                    z-index: 9999;
-                    font-size: 13px;
-                    white-space: nowrap;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    opacity: 0;
-                    display: none;
-                }
-            `;
-            document.head.appendChild(style);
         }
 
         const resizer = document.getElementById("chart-inner-resizer");
         const scrollContainer = document.getElementById("chart-scroll-wrapper");
         
         const isMobile = window.innerWidth < 768;
-        resizer.style.width = "100%";
 
         const prices = finalData.map(x => x.price);
         const dates = finalData.map(x => x.date);
@@ -575,7 +550,9 @@ window.renderBinaryChart = function(buffer) {
     } catch (e) { console.error(e); }
 };
 
+
 // =================== Download Chart ===================
+
 
 (function() {
     function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -684,25 +661,15 @@ window.renderBinaryChart = function(buffer) {
         const stats = document.querySelector(".price-stats");
         if (stats && !document.getElementById("btn-download-container")) {
             const containerHtml = `
-                <div id="btn-download-container" style="display: flex; justify-content: center; gap: 10px; margin: 25px 0; flex-wrap: wrap;">
-                    <button id="btn-download-chart" onclick="downloadChartAsImage('download')" 
-                        style="padding: 12px 24px; background: #ff6000; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 8px;">
+                <div id="btn-download-container">
+                    <button id="btn-download-chart" onclick="downloadChartAsImage('download')">
                         <span>📊</span> حفظ الرسم البياني
                     </button>
-                    <button id="btn-share-chart" onclick="downloadChartAsImage('share')" 
-                        style="padding: 12px 24px; background: #3498db; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 8px;">
+                    <button id="btn-share-chart" onclick="downloadChartAsImage('share')">
                         <span>🔗</span> مشاركة التقرير
                     </button>
                 </div>`;
             stats.insertAdjacentHTML("afterend", containerHtml);
-            
-            const btnD = document.getElementById("btn-download-chart");
-            btnD.onmouseover = () => { btnD.style.background = "#ff1e00"; };
-            btnD.onmouseout = () => { btnD.style.background = "#ff6000"; };
-            
-            const btnS = document.getElementById("btn-share-chart");
-            btnS.onmouseover = () => { btnS.style.background = "#2980b9"; };
-            btnS.onmouseout = () => { btnS.style.background = "#3498db"; };
             
             if (!navigator.share) {
                 document.getElementById("btn-share-chart").style.display = "none";
@@ -712,8 +679,6 @@ window.renderBinaryChart = function(buffer) {
 
     observer.observe(document.body, { childList: true, subtree: true });
 })();
-
-
 
 
 // =================== Telegram Alerts ===================
